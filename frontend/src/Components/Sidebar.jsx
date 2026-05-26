@@ -1,109 +1,99 @@
 // Components/Sidebar.jsx
-import { useNavigate, useLocation } from "react-router-dom";
-import "../Css/sidebar.css";
-import logo from "../Assets/AUM_Sol_Corp_symbol_with_bg.png";
+import "../Css/Sidebar.css";
 
-const navItems = [
-  { section: "Main" },
-  { label: "Dashboard",            icon: "bi-grid-1x2-fill",          path: "/dashboard" },
-
-  { section: "Phase 1 — Core" },
-  { label: "Customers",            icon: "bi-people-fill",             path: "/customers" },
-  { label: "Properties",           icon: "bi-building-fill",           path: "/properties" },
-
-  { section: "Phase 2 — Leasing" },
-  { label: "Lease Agreement",      icon: "bi-file-earmark-text-fill",  path: "/lease-agreement" },
-  { label: "Lease Cancellation",   icon: "bi-file-earmark-x-fill",     path: "/lease-cancellation" },
-  { label: "Rental Agreement",     icon: "bi-house-fill",              path: "/rental-agreement" },
-  { label: "Rental Cancellation",  icon: "bi-house-x-fill",            path: "/rental-cancellation" },
-
-  { section: "Phase 3 — Maintenance" },
-  { label: "Maintenance",          icon: "bi-tools",                   path: "/maintenance" },
-  { label: "Vendors",              icon: "bi-truck",                   path: "/vendors" },
-
-  { section: "Phase 4 — Procurement" },
-  { label: "Purchase Request",     icon: "bi-cart-fill",               path: "/purchase-request" },
-  { label: "Quote Analysis",       icon: "bi-clipboard-data-fill",     path: "/quote-analysis" },
-  { label: "Contract Creation",    icon: "bi-pen-fill",                path: "/contract-creation" },
-  { label: "Contract Approval",    icon: "bi-patch-check-fill",        path: "/contract-approval" },
-
-  { section: "Phase 5 — Finance & HR" },
-  { label: "Invoicing & Payment",  icon: "bi-receipt-cutoff",          path: "/invoicing" },
-  { label: "Time Reporting",       icon: "bi-clock-fill",              path: "/time-reporting" },
-  { label: "Leave Management",     icon: "bi-calendar2-check-fill",    path: "/leave-management" },
+/* ── Nav data ─────────────────────────────────────────── */
+const NAV = [
+  {
+    key: "overview", label: "Overview", dot: "dot-overview",
+    items: [
+      { path: "/dashboard",  label: "Dashboard",
+        icon: "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10" },
+    ],
+  },
+  {
+    key: "master", label: "Master (Core)", dot: "dot-master",
+    items: [
+      { path: "/customers", label: "Customer Module",
+        icon: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" },
+      { path: "/properties", label: "Property Module",
+        icon: "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" },
+      { path: "/vendors", label: "Vendor Management Module",
+        icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75" },
+    ],
+  },
+  {
+    key: "agreements", label: "Agreements", dot: "dot-agreements",
+    items: [
+      { path: "/lease-agreement",     label: "Lease Agreement Module",
+        icon: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8" },
+      { path: "/lease-cancellation",  label: "Lease Cancellation Module",
+        icon: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M9 15l6-6 M15 15L9 9" },
+      { path: "/rental-agreement",    label: "Rental Agreement Module",
+        icon: "M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" },
+      { path: "/rental-cancellation", label: "Rental Agreement Cancellation Module",
+        icon: "M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M9 15l6-6 M15 15L9 9" },
+    ],
+  },
+  {
+    key: "operations", label: "Operations", dot: "dot-operations",
+    items: [
+      { path: "/maintenance",      label: "Maintenance Request Module",
+        icon: "M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" },
+      { path: "/purchase-request", label: "Quotation Request Module",
+        icon: "M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2 M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2 M9 5a2 2 0 0 0 2-2h2a2 2 0 0 0 2 2" },
+      { path: "/quote-analysis",   label: "Quote Analysis Module",
+        icon: "M18 20V10 M12 20V4 M6 20v-6" },
+      { path: "/contract-approval", label: "Contract Approval Module",
+        icon: "M9 11l3 3L22 4 M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" },
+      { path: "/invoicing", label: "Invoicing & Payment Module",
+        icon: "M12 1v22 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" },
+    ],
+  },
+  {
+    key: "reports", label: "Reports", dot: "dot-reports",
+    items: [
+      { path: "/reports", label: "All Module Reports",
+        icon: "M18 20V10 M12 20V4 M6 20v-6 M22 20H2" },
+    ],
+  },
 ];
 
-export default function Sidebar({ open, onClose }) {
-  const navigate  = useNavigate();
-  const location  = useLocation();
-  const user      = JSON.parse(localStorage.getItem("pms_user") || "{}");
+function NavIcon({ d }) {
+  return (
+    <svg className="sidebar-icon" width="15" height="15" viewBox="0 0 24 24"
+      fill="none" stroke="currentColor" strokeWidth="1.8"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={d} />
+    </svg>
+  );
+}
 
-  const handleNav = (path) => {
-    navigate(path);
-    onClose && onClose();
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem("pms_user");
-    navigate("/login");
-  };
-
+export default function Sidebar({ activePath = "/dashboard", onNavigate, open, onClose }) {
   return (
     <>
-      {/* Mobile dark overlay — only when open */}
-      {open && (
-        <div className="sidebar-overlay visible" onClick={onClose} />
-      )}
+      {open && <div className="sidebar-overlay" onClick={onClose} />}
 
-      <aside className={`sidebar${open ? " open" : ""}`}>
-
-        {/* ── Logo ── */}
-        <div className="sidebar-logo">
-          <div className="logo-icon">
-            <img src={logo} alt="Logo" />
-          </div>
-          <div className="logo-text">
-            <span className="logo-name">AUM Sol Corp</span>
-            <span className="logo-tagline">PMS Platform</span>
-          </div>
-        </div>
-
-        {/* ── Navigation ── */}
+      <aside className={`pms-sidebar${open ? " sidebar--open" : ""}`}>
         <nav className="sidebar-nav">
-          {navItems.map((item, i) =>
-            item.section ? (
-              <div className="nav-section-label" key={i}>{item.section}</div>
-            ) : (
-              <button
-                key={i}
-                className={`nav-item${location.pathname === item.path ? " active" : ""}`}
-                onClick={() => handleNav(item.path)}
-              >
-                <i className={`bi ${item.icon}`}></i>
-                <span>{item.label}</span>
-              </button>
-            )
-          )}
-        </nav>
-
-        {/* ── User footer ── */}
-        <div className="sidebar-footer">
-          <div className="sidebar-user">
-            <div className="sidebar-avatar">
-              {(user.firstName?.[0] || "U").toUpperCase()}
-            </div>
-            <div className="sidebar-user-info">
-              <div className="sidebar-user-name">
-                {user.firstName ? `${user.firstName} ${user.lastName}` : "User"}
+          {NAV.map(section => (
+            <div key={section.key} className="sidebar-section">
+              <div className="sidebar-section-label">
+                <span className={`sidebar-dot ${section.dot}`} />
+                {section.label}
               </div>
-              <div className="sidebar-user-role">{user.role || "Member"}</div>
+              {section.items.map(item => (
+                <button
+                  key={item.path}
+                  className={`sidebar-item${activePath === item.path ? " active" : ""}`}
+                  onClick={() => { onNavigate?.(item.path); onClose?.(); }}
+                >
+                  <NavIcon d={item.icon} />
+                  <span className="sidebar-item-text">{item.label}</span>
+                </button>
+              ))}
             </div>
-            <button className="btn-logout" onClick={handleLogout} title="Logout">
-              <i className="bi bi-box-arrow-right"></i>
-            </button>
-          </div>
-        </div>
-
+          ))}
+        </nav>
       </aside>
     </>
   );
