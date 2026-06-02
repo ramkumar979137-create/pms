@@ -87,7 +87,7 @@ export default function TimeReporting() {
       )}
 
       <div className="pms-card">
-        <div className="pms-table-wrap">
+        <div className="table-wrap pms-table-wrap">
           <table className="pms-table">
             <thead>
               <tr><th>ID</th><th>Employee</th><th>Date</th><th>Project</th><th>Hours</th><th>Overtime</th><th>Status</th><th>Action</th></tr>

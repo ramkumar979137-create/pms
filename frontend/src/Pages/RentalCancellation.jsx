@@ -1,415 +1,497 @@
-// Pages/RentalCancellation.jsx
-import { useState, useEffect, useRef } from "react";
-import axios from "axios";
-import "../Css/Global.css";
+// RentalCancellationModule.jsx
+// AUM Sol Corp PMS — Rental Agreement Cancellation Module
 
-const API = "http://localhost:5000/api/rental-cancellations";
-const reasonOptions = ["Tenant Request", "Landlord Request", "Mutual Agreement", "Non-Payment", "Property Issues"];
-const statusOptions = ["Pending", "Approved", "Rejected", "Completed"];
-const statusColor = { Pending: "warning", Approved: "success", Rejected: "danger", Completed: "info" };
+import { useState } from 'react'
+import '../Css/RenatalCancellation.css'
 
-const emptyForm = {
-  rentalId: "",
-  tenant: "",
-  property: "",
-  propertyUnit: "",
-  originalEndDate: "",
-  cancellationDate: "",
-  noticeDaysGiven: "",
-  reason: "Tenant Request",
-  refundAmount: "",
-  deductionAmount: "",
-  remarks: "",
-  status: "Pending",
-  userId: 1,
-};
+/* ─────────────────────────────────────
+   Constants
+───────────────────────────────────── */
+const REFUND_POLICIES = [
+  'Full refund of deposit',
+  'Partial refund (50%)',
+  'No refund',
+  'Prorated refund',
+  'Custom amount',
+]
 
-/* ── File icon helper ── */
-function fileIcon(name = "") {
-  const ext = name.split(".").pop()?.toLowerCase();
-  if (ext === "pdf") return { icon: "bi-file-earmark-pdf-fill", color: "#c0392b" };
-  if (["jpg", "jpeg", "png"].includes(ext)) return { icon: "bi-file-earmark-image-fill", color: "#1565a0" };
-  if (["doc", "docx"].includes(ext)) return { icon: "bi-file-earmark-word-fill", color: "#2980b9" };
-  return { icon: "bi-file-earmark-fill", color: "#6b7a90" };
+const CURRENCIES = [
+  { code: 'INR', symbol: '₹' },
+  { code: 'USD', symbol: '$' },
+  { code: 'EUR', symbol: '€' },
+]
+
+const STATUSES = ['Cancelled', 'Pending Approval', 'Disputed']
+
+/* ─────────────────────────────────────
+   Seed — Active Rent Agreements
+───────────────────────────────────── */
+const ACTIVE_RENTS = [
+  {
+    id: 'RNT-001',
+    customer: 'Ravi Krishnan',
+    property: '12 Anna Nagar, Chennai',
+    rentStart: '2024-01-01',
+    rentEnd: '2025-12-31',
+    monthlyRent: 18000,
+  },
+  {
+    id: 'RNT-002',
+    customer: 'Priya Sundaram',
+    property: '45 T Nagar, Chennai',
+    rentStart: '2024-03-15',
+    rentEnd: '2025-03-14',
+    monthlyRent: 22000,
+  },
+  {
+    id: 'RNT-003',
+    customer: 'Aarav Mehta',
+    property: '78 Velachery, Chennai',
+    rentStart: '2024-06-01',
+    rentEnd: '2026-05-31',
+    monthlyRent: 15000,
+  },
+]
+
+/* ─────────────────────────────────────
+   Helpers
+───────────────────────────────────── */
+function nextId(list) {
+  const max = list.reduce((acc, r) => {
+    const n = parseInt(r.id.replace('RCN-', ''), 10)
+    return n > acc ? n : acc
+  }, 0)
+  return `RCN-${String(max + 1).padStart(3, '0')}`
 }
 
-/* ── Doc chip ── */
-function DocChip({ name, onRemove }) {
-  const { icon, color } = fileIcon(name);
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", background: "var(--cream-dark)", border: "1.5px solid var(--border)", borderRadius: 8, padding: "0.3rem 0.65rem", fontSize: "0.78rem", color: "var(--text-mid)", maxWidth: 210 }}>
-      <i className={`bi ${icon}`} style={{ color, fontSize: "0.95rem", flexShrink: 0 }}></i>
-      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{name}</span>
-      {onRemove && (
-        <button onClick={onRemove} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--danger)", padding: 0, fontSize: "0.8rem", flexShrink: 0 }}>
-          <i className="bi bi-x-lg"></i>
-        </button>
-      )}
-    </div>
-  );
+function today() {
+  return new Date().toISOString().split('T')[0]
 }
 
-export default function RentalCancellation() {
-  const [cancellations, setCancellations] = useState([]);
-  const [showForm, setShow] = useState(false);
-  const [form, setForm] = useState(emptyForm);
-  const [files, setFiles] = useState([]);
-  const [filter, setFilter] = useState("All");
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [dragOver, setDragOver] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const fileRef = useRef();
+function blankForm(id) {
+  return {
+    id,
+    cancelDate: today(),
+    rentId: '',
+    customer: '',
+    property: '',
+    rentStart: '',
+    rentEnd: '',
+    monthlyRent: '',
+    lastPaymentDate: '',
+    currency: 'INR',
+    pendingDues: '0.00',
+    refundAmount: '0.00',
+    refundPolicy: 'Full refund of deposit',
+    status: 'Cancelled',
+    reason: '',
+    remarks: '',
+  }
+}
 
-  /* ── Fetch Cancellations ── */
-  const fetchCancellations = async () => {
-    setLoading(true);
-    try {
-      const params = {};
-      if (filter !== "All") params.status = filter;
-      if (search) params.tenant = search;
-      const res = await axios.get(API, { params });
-      setCancellations(res.data.cancellations || []);
-    } catch {
-      setError("Failed to load cancellations.");
-    } finally {
-      setLoading(false);
+function formatCurrency(cur, amount) {
+  const sym = CURRENCIES.find(c => c.code === cur)?.symbol || '₹'
+  return `${sym} ${Number(amount).toLocaleString('en-IN')}`
+}
+
+function formatDate(d) {
+  if (!d) return '—'
+  const [y, m, day] = d.split('-')
+  return `${day}-${m}-${y}`
+}
+
+const statusClass = s => {
+  if (s === 'Cancelled')        return 'rcBadgeCancelled'
+  if (s === 'Pending Approval') return 'rcBadgePending'
+  if (s === 'Disputed')         return 'rcBadgeDisputed'
+  return ''
+}
+
+/* ─────────────────────────────────────
+   Form
+───────────────────────────────────── */
+function RentalCancellationForm({ form, onChange }) {
+  const set = (k, v) => onChange({ ...form, [k]: v })
+
+  const handleRentSelect = rentId => {
+    const rent = ACTIVE_RENTS.find(r => r.id === rentId)
+    if (rent) {
+      onChange({
+        ...form,
+        rentId: rent.id,
+        customer: rent.customer,
+        property: rent.property,
+        rentStart: rent.rentStart,
+        rentEnd: rent.rentEnd,
+        monthlyRent: rent.monthlyRent,
+      })
+    } else {
+      onChange({
+        ...form,
+        rentId: '',
+        customer: '',
+        property: '',
+        rentStart: '',
+        rentEnd: '',
+        monthlyRent: '',
+      })
     }
-  };
-
-  useEffect(() => { fetchCancellations(); }, [filter]);
-
-  /* ── File helpers ── */
-  const addFiles = (list) => {
-    const arr = Array.from(list);
-    const unique = arr.filter(f => !files.find(x => x.name === f.name));
-    setFiles(p => [...p, ...unique]);
-  };
-  const removeFile = (name) => setFiles(p => p.filter(f => f.name !== name));
-  const handleDrop = (e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); };
-
-  /* ── Submit (Create/Update) ── */
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    setError("");
-    try {
-      const fd = new FormData();
-      const user = JSON.parse(localStorage.getItem("pms_user") || "{}");
-
-      Object.entries(form).forEach(([k, v]) => fd.append(k, String(v)));
-      fd.append("userId", String(user.id || 1));
-      files.forEach(f => fd.append("docs", f));
-
-      if (editingId) {
-        await axios.put(`${API}/${editingId}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
-      } else {
-        await axios.post(API, fd, { headers: { "Content-Type": "multipart/form-data" } });
-      }
-
-      setForm(emptyForm);
-      setFiles([]);
-      setShow(false);
-      setEditingId(null);
-      fetchCancellations();
-    } catch (err) {
-      setError(err?.response?.data?.message || "Failed to save.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  /* ── Edit Cancellation ── */
-  const handleEdit = (cancellation) => {
-    setForm({
-      rentalId: cancellation.rentalId || "",
-      tenant: cancellation.tenant || "",
-      property: cancellation.property || "",
-      propertyUnit: cancellation.propertyUnit || "",
-      originalEndDate: cancellation.originalEndDate || "",
-      cancellationDate: cancellation.cancellationDate || "",
-      noticeDaysGiven: cancellation.noticeDaysGiven || "",
-      reason: cancellation.reason || "Tenant Request",
-      refundAmount: cancellation.refundAmount || "",
-      deductionAmount: cancellation.deductionAmount || "",
-      remarks: cancellation.remarks || "",
-      status: cancellation.status || "Pending",
-      userId: cancellation.userId || 1,
-    });
-    setEditingId(cancellation.id);
-    setShow(true);
-  };
-
-  /* ── Delete Cancellation ── */
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this cancellation request?")) return;
-
-    try {
-      await axios.delete(`${API}/${id}`);
-      fetchCancellations();
-    } catch {
-      setError("Failed to delete.");
-    }
-  };
-
-  /* ── Remove Doc ── */
-  const handleRemoveDoc = async (id, fileName) => {
-    try {
-      await axios.delete(`${API}/${id}/doc`, { data: { fileName } });
-      fetchCancellations();
-    } catch {
-      setError("Failed to remove document.");
-    }
-  };
-
-  const filtered = cancellations.filter(c =>
-    c.tenant?.toLowerCase().includes(search.toLowerCase()) ||
-    c.property?.toLowerCase().includes(search.toLowerCase())
-  );
+  }
 
   return (
-    <>
-      <div className="page-header">
-        <h2><i className="bi bi-x-circle-fill" style={{ marginRight: 8, color: "var(--danger)" }}></i>Rental Cancellations</h2>
-        <p>Manage rental cancellation requests with refund calculations and documentation.</p>
+    <div className="rcFormGrid">
+
+      {/* Row 1: Record ID + Cancel Date */}
+      <div className="rcField">
+        <label className="rcLabel">Record ID</label>
+        <input className="rcInput rcReadonly" value={form.id} readOnly />
       </div>
 
-      {/* Stats */}
-      <div className="stat-grid">
-        {["Pending", "Approved", "Rejected", "Completed"].map(s => (
-          <div className="stat-card" key={s}>
-            <div className={`stat-icon ${statusColor[s]}`}><i className="bi bi-clipboard-check"></i></div>
-            <div>
-              <div className="stat-label">{s}</div>
-              <div className="stat-value">{cancellations.filter(c => c.status === s).length}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Toolbar */}
-      <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "center" }}>
+      <div className="rcField">
+        <label className="rcLabel">Cancellation Date <span className="rcReq">*</span></label>
         <input
-          style={{ flex: 1, minWidth: 180, border: "1.5px solid var(--border)", borderRadius: 9, padding: "0.55rem 0.85rem", fontSize: "0.88rem", background: "var(--white)", fontFamily: "DM Sans,sans-serif", color: "var(--text-dark)" }}
-          placeholder="🔍  Search tenant or property..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && fetchCancellations()}
+          type="date"
+          className="rcInput"
+          value={form.cancelDate}
+          onChange={e => set('cancelDate', e.target.value)}
         />
-        {["All", "Pending", "Approved", "Rejected", "Completed"].map(f => (
-          <button key={f} className={`btn-pms ${filter === f ? "primary" : "secondary"}`}
-            style={{ padding: "0.4rem 0.9rem", fontSize: "0.82rem" }}
-            onClick={() => setFilter(f)}>{f}
-          </button>
-        ))}
-        <button className="btn-pms gold" onClick={() => { setShow(!showForm); setEditingId(null); setForm(emptyForm); setFiles([]); }}>
-          <i className="bi bi-plus-lg"></i> New Cancellation
-        </button>
       </div>
 
-      {error && (
-        <div style={{ background: "#fdf0f0", border: "1.5px solid #e8b0b0", borderRadius: 10, padding: "0.7rem 1rem", marginBottom: "1rem", fontSize: "0.87rem", color: "var(--maroon-dark)" }}>
-          <i className="bi bi-exclamation-circle me-2"></i>{error}
-          <button onClick={() => setError("")} style={{ float: "right", background: "none", border: "none", cursor: "pointer", fontSize: "0.9rem" }}>✕</button>
+      {/* Rent Agreement dropdown — full width */}
+      <div className="rcField rcFull">
+        <label className="rcLabel">Rent Agreement <span className="rcReq">*</span></label>
+        <select
+          className="rcSelect"
+          value={form.rentId}
+          onChange={e => handleRentSelect(e.target.value)}
+        >
+          <option value="">— Select active rent agreement —</option>
+          {ACTIVE_RENTS.map(r => (
+            <option key={r.id} value={r.id}>
+              {r.id} — {r.customer} · {r.property}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Auto-filled: Customer, Property, Rent Start, Rent End */}
+      <div className="rcField">
+        <label className="rcLabel">Customer</label>
+        <input className="rcInput rcReadonly" value={form.customer} readOnly />
+      </div>
+
+      <div className="rcField">
+        <label className="rcLabel">Property</label>
+        <input className="rcInput rcReadonly" value={form.property} readOnly />
+      </div>
+
+      <div className="rcField">
+        <label className="rcLabel">Rent Start</label>
+        <input
+          className="rcInput rcReadonly"
+          value={form.rentStart ? formatDate(form.rentStart) : ''}
+          readOnly
+        />
+      </div>
+
+      <div className="rcField">
+        <label className="rcLabel">Rent End</label>
+        <input
+          className="rcInput rcReadonly"
+          value={form.rentEnd ? formatDate(form.rentEnd) : ''}
+          readOnly
+        />
+      </div>
+
+      {/* Last Payment Date + Monthly Rent */}
+      <div className="rcField">
+        <label className="rcLabel">Last Payment Date</label>
+        <input
+          type="date"
+          className="rcInput"
+          value={form.lastPaymentDate}
+          onChange={e => set('lastPaymentDate', e.target.value)}
+        />
+      </div>
+
+      <div className="rcField">
+        <label className="rcLabel">Monthly Rent</label>
+        <input
+          className="rcInput rcReadonly"
+          value={form.monthlyRent ? formatCurrency(form.currency, form.monthlyRent) : ''}
+          readOnly
+        />
+      </div>
+
+      {/* ── SETTLEMENT section ── */}
+      <div className="rcSectionTitle">Settlement</div>
+
+      {/* Pending Dues */}
+      <div className="rcField">
+        <label className="rcLabel">Pending Dues</label>
+        <div className="rcAmountRow">
+          <select
+            className="rcSelect rcCurrencySelect"
+            value={form.currency}
+            onChange={e => set('currency', e.target.value)}
+          >
+            {CURRENCIES.map(c => (
+              <option key={c.code} value={c.code}>{c.symbol} {c.code}</option>
+            ))}
+          </select>
+          <input
+            type="number"
+            className="rcInput"
+            value={form.pendingDues}
+            min="0"
+            step="0.01"
+            onChange={e => set('pendingDues', e.target.value)}
+          />
         </div>
-      )}
+      </div>
 
-      {/* ══ Form ══ */}
-      {showForm && (
-        <div className="pms-card" style={{ marginBottom: "1.25rem" }}>
-          <h3 style={{ fontSize: "1rem", marginBottom: "1.25rem" }}>
-            {editingId ? "Edit Cancellation Request" : "New Cancellation Request"}
-          </h3>
-          <form onSubmit={handleSubmit}>
-            <div className="form-grid" style={{ marginBottom: "1rem" }}>
-
-              <div className="field-group">
-                <label>Rental ID *</label>
-                <input required value={form.rentalId} onChange={e => setForm({ ...form, rentalId: e.target.value })} placeholder="RNT_xxxxx" />
-              </div>
-              <div className="field-group">
-                <label>Tenant Name *</label>
-                <input required value={form.tenant} onChange={e => setForm({ ...form, tenant: e.target.value })} placeholder="Amit Kumar" />
-              </div>
-              <div className="field-group">
-                <label>Property Name *</label>
-                <input required value={form.property} onChange={e => setForm({ ...form, property: e.target.value })} placeholder="City Hub" />
-              </div>
-              <div className="field-group">
-                <label>Unit No</label>
-                <input value={form.propertyUnit} onChange={e => setForm({ ...form, propertyUnit: e.target.value })} placeholder="1A" />
-              </div>
-              <div className="field-group">
-                <label>Original End Date *</label>
-                <input required type="date" value={form.originalEndDate} onChange={e => setForm({ ...form, originalEndDate: e.target.value })} />
-              </div>
-              <div className="field-group">
-                <label>Cancellation Date *</label>
-                <input required type="date" value={form.cancellationDate} onChange={e => setForm({ ...form, cancellationDate: e.target.value })} />
-              </div>
-              <div className="field-group">
-                <label>Notice Days Given</label>
-                <input type="number" value={form.noticeDaysGiven} onChange={e => setForm({ ...form, noticeDaysGiven: e.target.value })} placeholder="30" />
-              </div>
-              <div className="field-group">
-                <label>Reason *</label>
-                <select required value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })}>
-                  {reasonOptions.map(r => <option key={r}>{r}</option>)}
-                </select>
-              </div>
-              <div className="field-group">
-                <label>Refund Amount (₹)</label>
-                <input type="number" step="0.01" value={form.refundAmount} onChange={e => setForm({ ...form, refundAmount: e.target.value })} placeholder="10000" />
-              </div>
-              <div className="field-group">
-                <label>Deduction Amount (₹)</label>
-                <input type="number" step="0.01" value={form.deductionAmount} onChange={e => setForm({ ...form, deductionAmount: e.target.value })} placeholder="500" />
-              </div>
-              <div className="field-group">
-                <label>Status</label>
-                <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
-                  {statusOptions.map(s => <option key={s}>{s}</option>)}
-                </select>
-              </div>
-              <div className="field-group form-full">
-                <label>Remarks / Notes</label>
-                <textarea value={form.remarks} onChange={e => setForm({ ...form, remarks: e.target.value })} placeholder="Any additional remarks..." />
-              </div>
-            </div>
-
-            {/* ── Document Upload ── */}
-            <div style={{ marginBottom: "1.25rem" }}>
-              <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-mid)", display: "block", marginBottom: "0.5rem" }}>
-                <i className="bi bi-paperclip" style={{ marginRight: 5, color: "var(--danger)" }}></i>
-                Supporting Documents
-                <span style={{ fontSize: "0.74rem", fontWeight: 400, color: "var(--text-muted)", marginLeft: 6 }}>
-                  Cancellation notice, proof, bank details…
-                </span>
-              </label>
-
-              <div
-                onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={handleDrop}
-                onClick={() => fileRef.current.click()}
-                style={{
-                  border: `2px dashed ${dragOver ? "var(--danger)" : "var(--border)"}`,
-                  borderRadius: 12,
-                  padding: "1.5rem 1rem",
-                  background: dragOver ? "rgba(192,57,43,0.04)" : "var(--cream)",
-                  cursor: "pointer",
-                  textAlign: "center",
-                  transition: "all 0.2s",
-                  marginBottom: "0.75rem",
-                }}
-              >
-                <i className="bi bi-cloud-upload-fill" style={{ fontSize: "2rem", color: dragOver ? "var(--danger)" : "var(--text-muted)", display: "block", marginBottom: "0.4rem" }}></i>
-                <div style={{ fontSize: "0.86rem", fontWeight: 600, color: "var(--text-mid)" }}>
-                  Drag & drop, or <span style={{ color: "var(--danger)", textDecoration: "underline" }}>click to browse</span>
-                </div>
-                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.25rem" }}>
-                  PDF, JPG, PNG, DOC, DOCX — Max 10MB each
-                </div>
-              </div>
-
-              <input ref={fileRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                style={{ display: "none" }} onChange={e => { addFiles(e.target.files); e.target.value = ""; }} />
-
-              {files.length > 0 ? (
-                <div>
-                  <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginBottom: "0.4rem" }}>
-                    {files.length} file{files.length > 1 ? "s" : ""} ready to upload
-                  </div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                    {files.map(f => <DocChip key={f.name} name={f.name} onRemove={() => removeFile(f.name)} />)}
-                  </div>
-                </div>
-              ) : (
-                <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", textAlign: "center" }}>No files selected</div>
-              )}
-            </div>
-
-            {/* Actions */}
-            <div style={{ display: "flex", gap: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid var(--border)" }}>
-              <button className="btn-pms primary" type="submit" disabled={saving}>
-                {saving
-                  ? <><span className="spinner-border spinner-border-sm me-2"></span>Saving...</>
-                  : <><i className="bi bi-check-lg"></i> {editingId ? "Update" : "Save"} Cancellation</>}
-              </button>
-              <button className="btn-pms secondary" type="button"
-                onClick={() => { setShow(false); setForm(emptyForm); setFiles([]); setEditingId(null); }}>
-                Cancel
-              </button>
-            </div>
-          </form>
+      {/* Refund Amount */}
+      <div className="rcField">
+        <label className="rcLabel">Refund Amount</label>
+        <div className="rcAmountRow">
+          <select
+            className="rcSelect rcCurrencySelect"
+            value={form.currency}
+            onChange={e => set('currency', e.target.value)}
+          >
+            {CURRENCIES.map(c => (
+              <option key={c.code} value={c.code}>{c.symbol} {c.code}</option>
+            ))}
+          </select>
+          <input
+            type="number"
+            className="rcInput"
+            value={form.refundAmount}
+            min="0"
+            step="0.01"
+            onChange={e => set('refundAmount', e.target.value)}
+          />
         </div>
-      )}
+      </div>
 
-      {/* ══ Table ══ */}
-      <div className="pms-card">
-        {loading ? (
-          <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>
-            <span className="spinner-border spinner-border-sm me-2"></span>Loading...
-          </div>
-        ) : (
-          <div className="pms-table-wrap">
-            <table className="pms-table">
-              <thead>
+      {/* Refund Policy */}
+      <div className="rcField">
+        <label className="rcLabel">Refund Policy</label>
+        <select
+          className="rcSelect"
+          value={form.refundPolicy}
+          onChange={e => set('refundPolicy', e.target.value)}
+        >
+          {REFUND_POLICIES.map(p => <option key={p}>{p}</option>)}
+        </select>
+      </div>
+
+      {/* Status */}
+      <div className="rcField">
+        <label className="rcLabel">Status</label>
+        <select
+          className="rcSelect"
+          value={form.status}
+          onChange={e => set('status', e.target.value)}
+        >
+          {STATUSES.map(s => <option key={s}>{s}</option>)}
+        </select>
+      </div>
+
+      {/* Reason */}
+      <div className="rcField rcFull">
+        <label className="rcLabel">Reason</label>
+        <textarea
+          className="rcTextarea"
+          placeholder="Why is this rent agreement being cancelled?"
+          value={form.reason}
+          onChange={e => set('reason', e.target.value)}
+        />
+      </div>
+
+      {/* Internal Remarks */}
+      <div className="rcField rcFull">
+        <label className="rcLabel">Internal Remarks</label>
+        <textarea
+          className="rcTextarea"
+          placeholder="Internal notes (not visible to tenant)"
+          value={form.remarks}
+          onChange={e => set('remarks', e.target.value)}
+        />
+      </div>
+
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────
+   Modal — inline (no createPortal)
+───────────────────────────────────── */
+function RentalCancellationModal({ form, onChange, onClose, onSave }) {
+  const handleSave = () => {
+    if (!form.rentId || !form.cancelDate) {
+      alert('Rent Agreement and Cancellation Date are required.')
+      return
+    }
+    onSave(form)
+  }
+
+  const onBackdropClick = e => {
+    if (e.target === e.currentTarget) onClose()
+  }
+
+  return (
+    <div className="rcBackdrop" onClick={onBackdropClick}>
+      <div className="rcModal" role="dialog" aria-modal="true">
+
+        <div className="rcModalHeader">
+          <span className="rcModalTitle">Cancel Rent Agreement</span>
+          <button className="rcCloseBtn" onClick={onClose} aria-label="Close">×</button>
+        </div>
+
+        <div className="rcModalBody">
+          <RentalCancellationForm form={form} onChange={onChange} />
+        </div>
+
+        <div className="rcModalFooter">
+          <button className="rcBtnOutline" onClick={onClose}>Cancel</button>
+          <button className="rcBtnDanger" onClick={handleSave}>Confirm Cancellation</button>
+        </div>
+
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────
+   Main Page
+───────────────────────────────────── */
+export default function RentalCancellationModule() {
+  const [records, setRecords] = useState([])
+  const [modal, setModal]     = useState(null)
+
+  const openNew    = ()   => setModal({ form: blankForm(nextId(records)) })
+  const closeModal = ()   => setModal(null)
+  const updateForm = form => setModal(prev => ({ ...prev, form }))
+
+  const handleSave = form => {
+    setRecords(prev => [...prev, form])
+    closeModal()
+  }
+
+  const handleDelete = id => {
+    if (window.confirm(`Delete record ${id}?`))
+      setRecords(prev => prev.filter(r => r.id !== id))
+  }
+
+  return (
+    <div className="rcPageWrapper">
+
+      {/* Page Header */}
+      <div className="rcBreadcrumb">Agreements / Rental Agreement Cancellation Module</div>
+      <div className="rcTitleRow">
+        <h1 className="rcPageTitle">Rent Cancellations</h1>
+        <span className="rcPageSubtitle">Process rent agreement terminations</span>
+      </div>
+
+      {/* Content Card */}
+      <div className="rcContentCard">
+
+        {/* Toolbar */}
+        <div className="rcToolbar">
+          <div className="rcSpacer" />
+          <button className="rcNewBtn" onClick={openNew}>+ New Cancellation</button>
+        </div>
+
+        {/* Desktop Table */}
+        <div className="table-wrap rcTableWrap">
+          <table className="rcTable">
+            <thead>
+              <tr>
+                <th>Record ID</th>
+                <th>Rent ID</th>
+                <th>Customer</th>
+                <th>Property</th>
+                <th>Cancel Date</th>
+                <th>Pending Dues</th>
+                <th>Refund</th>
+                <th>Status</th>
+                <th colSpan={2}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.length === 0 ? (
                 <tr>
-                  <th>Cancellation ID</th>
-                  <th>Tenant</th>
-                  <th>Property</th>
-                  <th>Reason</th>
-                  <th>Cancellation Date</th>
-                  <th>Refund</th>
-                  <th>Documents</th>
-                  <th>Status</th>
-                  <th>Action</th>
+                  <td colSpan={10} className="rcEmptyState">
+                    No cancellations recorded
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filtered.map(c => (
-                  <tr key={c.id}>
-                    <td style={{ fontWeight: 600, color: "var(--danger)", fontSize: "0.78rem" }}>{c.cancellationId}</td>
-                    <td style={{ fontWeight: 500 }}>{c.tenant}</td>
-                    <td style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>{c.property} {c.propertyUnit}</td>
-                    <td><span className="badge-pms neutral">{c.reason}</span></td>
-                    <td style={{ fontSize: "0.82rem" }}>{c.cancellationDate}</td>
-                    <td style={{ fontWeight: 600 }}>₹{Number(c.refundAmount || 0).toLocaleString("en-IN")}</td>
+              ) : (
+                records.map(r => (
+                  <tr key={r.id}>
+                    <td><span className="rcRecordId">{r.id}</span></td>
+                    <td>{r.rentId || '—'}</td>
+                    <td>{r.customer || '—'}</td>
+                    <td className="rcPropertyCell">{r.property || '—'}</td>
+                    <td>{formatDate(r.cancelDate)}</td>
+                    <td>{parseFloat(r.pendingDues) > 0 ? formatCurrency(r.currency, r.pendingDues) : '—'}</td>
+                    <td>{parseFloat(r.refundAmount) > 0 ? formatCurrency(r.currency, r.refundAmount) : '—'}</td>
                     <td>
-                      {c.docs && c.docs.length > 0 ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-                          {c.docs.map(d => (
-                            <DocChip key={d.name} name={d.name} onRemove={() => handleRemoveDoc(c.id, d.name)} />
-                          ))}
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>— No docs</span>
-                      )}
+                      <span className={`rcBadge ${statusClass(r.status)}`}>{r.status}</span>
                     </td>
-                    <td><span className={`badge-pms ${statusColor[c.status]}`}>{c.status}</span></td>
-                    <td>
-                      <div style={{ display: "flex", gap: "0.4rem" }}>
-                        <button className="btn-pms sm secondary" onClick={() => handleEdit(c)}><i className="bi bi-pencil"></i></button>
-                        <button className="btn-pms sm danger" onClick={() => handleDelete(c.id)}><i className="bi bi-trash"></i></button>
-                      </div>
+                    <td style={{ width: 50 }}>
+                      <button className="rcEditBtn">Edit</button>
+                    </td>
+                    <td style={{ width: 66 }}>
+                      <button className="rcDeleteBtn" onClick={() => handleDelete(r.id)}>Delete</button>
                     </td>
                   </tr>
-                ))}
-                {filtered.length === 0 && !loading && (
-                  <tr>
-                    <td colSpan={9} style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>
-                      No cancellation requests found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="rcMobileList">
+          {records.length === 0 && (
+            <p style={{ textAlign: 'center', color: '#888', padding: '32px 0' }}>
+              No cancellations recorded
+            </p>
+          )}
+          {records.map(r => (
+            <div className="rcMobileCard" key={r.id}>
+              <div className="rcMcTop">
+                <div>
+                  <div className="rcMcId">{r.id}</div>
+                  <div className="rcMcRent">Rent: {r.rentId || '—'}</div>
+                </div>
+                <span className={`rcBadge ${statusClass(r.status)}`}>{r.status}</span>
+              </div>
+              <div className="rcMcRow">Customer: <span>{r.customer || '—'}</span></div>
+              <div className="rcMcRow">Property: <span>{r.property || '—'}</span></div>
+              <div className="rcMcRow">Cancel Date: <span>{formatDate(r.cancelDate)}</span></div>
+              <div className="rcMcRow">Pending Dues: <span>{parseFloat(r.pendingDues) > 0 ? formatCurrency(r.currency, r.pendingDues) : '—'}</span></div>
+              <div className="rcMcRow">Refund: <span>{parseFloat(r.refundAmount) > 0 ? formatCurrency(r.currency, r.refundAmount) : '—'}</span></div>
+              <div className="rcMcActions">
+                <button className="rcDeleteBtn" onClick={() => handleDelete(r.id)}>Delete</button>
+              </div>
+            </div>
+          ))}
+        </div>
+
       </div>
-    </>
-  );
+
+      {/* Modal */}
+      {modal && (
+        <RentalCancellationModal
+          form={modal.form}
+          onChange={updateForm}
+          onClose={closeModal}
+          onSave={handleSave}
+        />
+      )}
+
+    </div>
+  )
 }

@@ -2,12 +2,12 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import "../Css/Global.css";
+import "../Css/LeaseAgreement.css";
 
 const API = "http://localhost:5000/api/lease-agreements";
 const leaseTermOptions = ["6", "12", "24", "36"];
 const paymentOptions = ["Bank Transfer", "UPI", "Cash", "Cheque"];
 const statusColor = { Active: "success", Expired: "danger", Terminated: "danger", "Renewal Pending": "warning" };
-
 const emptyForm = {
   tenant: "",
   landlord: "",
@@ -32,7 +32,6 @@ const emptyForm = {
   userId: 1,
 };
 
-/* ── File icon helper ── */
 function fileIcon(name = "") {
   const ext = name.split(".").pop()?.toLowerCase();
   if (ext === "pdf") return { icon: "bi-file-earmark-pdf-fill", color: "#c0392b" };
@@ -41,7 +40,6 @@ function fileIcon(name = "") {
   return { icon: "bi-file-earmark-fill", color: "#6b7a90" };
 }
 
-/* ── Doc chip ── */
 function DocChip({ name, onRemove }) {
   const { icon, color } = fileIcon(name);
   return (
@@ -56,9 +54,125 @@ function DocChip({ name, onRemove }) {
     </div>
   );
 }
+const SAMPLE_LEASES = [
+  {
+    id: 1,
+    leaseId: "LA-2024-001",
+    tenant: "Priya Sharma",
+    landlord: "Rajesh Kumar",
+    property: "Lotus Residency",
+    propertyUnit: "3B",
+    propertyType: "Residential",
+    propertyAddress: "12 KK Nagar, Madurai",
+    startDate: "2024-01-15",
+    endDate: "2025-01-14",
+    leaseTerm: "12",
+    monthlyRent: 18000,
+    securityDeposit: 36000,
+    maintenanceCharge: 500,
+    utilityCharge: 200,
+    rentDueDay: "5",
+    paymentMode: "Bank Transfer",
+    increasePercentage: "5",
+    terms: "Monthly rent payable by the 5th of each month. Late payment fee: 5% per month.",
+    notes: "Tenant well-behaved, paid on time.",
+    autoRenewal: true,
+    status: "Active",
+    docs: [
+      { name: "lease_deed_001.pdf" },
+      { name: "tenant_id_proof.jpg" },
+      { name: "property_noc.pdf" }
+    ]
+  },
+  {
+    id: 2,
+    leaseId: "LA-2024-002",
+    tenant: "Arjun Menon",
+    landlord: "Priya Sundaram",
+    property: "Skyline Towers",
+    propertyUnit: "7A",
+    propertyType: "Residential",
+    propertyAddress: "88 OMR, Chennai",
+    startDate: "2023-06-01",
+    endDate: "2024-05-31",
+    leaseTerm: "12",
+    monthlyRent: 25000,
+    securityDeposit: 50000,
+    maintenanceCharge: 1000,
+    utilityCharge: 500,
+    rentDueDay: "1",
+    paymentMode: "UPI",
+    increasePercentage: "7",
+    terms: "Premium apartment. Annual increment 7%. Pet policy: No pets allowed.",
+    notes: "Corporate lease, defaulted in last 3 months.",
+    autoRenewal: false,
+    status: "Expired",
+    docs: [
+      { name: "lease_deed_002.pdf" },
+      { name: "tenant_passport.pdf" }
+    ]
+  },
+  {
+    id: 3,
+    leaseId: "LA-2024-003",
+    tenant: "Sneha Patel",
+    landlord: "Vikram Singh",
+    property: "Green Villa",
+    propertyUnit: "Ground",
+    propertyType: "Villa",
+    propertyAddress: "4 Whitefield, Bengaluru",
+    startDate: "2024-03-20",
+    endDate: "2026-03-19",
+    leaseTerm: "24",
+    monthlyRent: 35000,
+    securityDeposit: 105000,
+    maintenanceCharge: 1500,
+    utilityCharge: 800,
+    rentDueDay: "20",
+    paymentMode: "Cheque",
+    increasePercentage: "4",
+    terms: "2-year lease. 3-month notice required for termination. Renewal negotiable.",
+    notes: "Family of 4, regular maintenance done.",
+    autoRenewal: true,
+    status: "Active",
+    docs: [
+      { name: "lease_agreement_villa.pdf" },
+      { name: "property_photos.zip" },
+      { name: "govt_id_scan.pdf" }
+    ]
+  },
+  {
+    id: 4,
+    leaseId: "LA-2023-045",
+    tenant: "Mohammed Hassan",
+    landlord: "Ravi Shankar",
+    property: "Downtown Plaza",
+    propertyUnit: "Suite 501",
+    propertyType: "Commercial",
+    propertyAddress: "50 MG Road, Bengaluru",
+    startDate: "2022-01-01",
+    endDate: "2023-12-31",
+    leaseTerm: "36",
+    monthlyRent: 55000,
+    securityDeposit: 165000,
+    maintenanceCharge: 3000,
+    utilityCharge: 1200,
+    rentDueDay: "1",
+    paymentMode: "Bank Transfer",
+    increasePercentage: "6",
+    terms: "Commercial lease. Business registered office. Renewal clause included.",
+    notes: "Professional tenant, terminated early.",
+    autoRenewal: false,
+    status: "Terminated",
+    docs: [
+      { name: "commercial_lease.pdf" },
+      { name: "business_registration.pdf" }
+    ]
+  }
+];
 
 export default function LeaseAgreement() {
-  const [leases, setLeases] = useState([]);
+  const [leases, setLeases] = useState(SAMPLE_LEASES);
   const [showForm, setShow] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [files, setFiles] = useState([]);
@@ -79,9 +193,10 @@ export default function LeaseAgreement() {
       if (filter !== "All") params.status = filter;
       if (search) params.tenant = search;
       const res = await axios.get(API, { params });
-      setLeases(res.data.leases || []);
+      setLeases(res.data.leases || SAMPLE_LEASES);
     } catch {
       setError("Failed to load leases.");
+      setLeases(SAMPLE_LEASES);
     } finally {
       setLoading(false);
     }
@@ -186,50 +301,34 @@ export default function LeaseAgreement() {
   );
 
   return (
-    <>
-      <div className="page-header">
-        <h2><i className="bi bi-file-earmark-text-fill" style={{ marginRight: 8, color: "var(--maroon-main)" }}></i>Lease Agreement</h2>
-        <p>Create and manage all tenant lease agreements with supporting documents.</p>
-      </div>
-
-      {/* Stats */}
-      <div className="stat-grid">
-        {["Active", "Expired", "Terminated"].map(s => (
-          <div className="stat-card" key={s}>
-            <div className={`stat-icon ${statusColor[s]}`}><i className="bi bi-file-earmark-text-fill"></i></div>
-            <div>
-              <div className="stat-label">{s} Leases</div>
-              <div className="stat-value">{leases.filter(l => l.status === s).length}</div>
-            </div>
-          </div>
-        ))}
-        <div className="stat-card">
-          <div className="stat-icon gold"><i className="bi bi-cash-coin"></i></div>
-          <div>
-            <div className="stat-label">Monthly Income</div>
-            <div className="stat-value">₹{(leases.filter(l => l.status === "Active").reduce((a, l) => a + Number(l.monthlyRent), 0) / 1000).toFixed(0)}K</div>
-          </div>
+    <div className="lease-page">
+      <div className="lease-page-top">
+        <div>
+          <div className="lease-page-meta">AGREEMENTS / LEASE AGREEMENT MODULE</div>
+          <h1>Lease Agreements</h1>
         </div>
+        <div className="lease-page-note">Long-term lease contracts</div>
       </div>
 
-      {/* Toolbar */}
-      <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "center" }}>
-        <input
-          style={{ flex: 1, minWidth: 200, border: "1.5px solid var(--border)", borderRadius: 9, padding: "0.55rem 0.85rem", fontSize: "0.88rem", background: "var(--white)", fontFamily: "DM Sans,sans-serif", color: "var(--text-dark)" }}
-          placeholder="🔍  Search tenant or property..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && fetchLeases()}
-        />
-        {["All", "Active", "Expired", "Terminated", "Renewal Pending"].map(f => (
-          <button key={f} className={`btn-pms ${filter === f ? "primary" : "secondary"}`}
-            style={{ padding: "0.4rem 0.9rem", fontSize: "0.82rem" }}
-            onClick={() => setFilter(f)}>{f}
+      <div className="lease-panel-card">
+        <div className="lease-panel-row">
+          <input
+            className="lease-search"
+            placeholder="Search leases..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && fetchLeases()}
+          />
+          <select className="lease-status-select" value={filter} onChange={e => setFilter(e.target.value)}>
+            {['All', 'Active', 'Expired', 'Terminated', 'Renewal Pending'].map(f => (
+              <option key={f} value={f}>{f}</option>
+            ))}
+          </select>
+          <button className="lease-btn primary" onClick={() => { setShow(!showForm); setEditingId(null); setForm(emptyForm); setFiles([]); }}>
+            + New Lease
           </button>
-        ))}
-        <button className="btn-pms gold" onClick={() => { setShow(!showForm); setEditingId(null); setForm(emptyForm); setFiles([]); }}>
-          <i className="bi bi-plus-lg"></i> New Lease
-        </button>
+        </div>
+        <div className="lease-record-count">{filtered.length} record{filtered.length === 1 ? '' : 's'}</div>
       </div>
 
       {error && (
@@ -409,63 +508,52 @@ export default function LeaseAgreement() {
       )}
 
       {/* ══ Table ══ */}
-      <div className="pms-card">
+      <div className="lease-table-card">
         {loading ? (
-          <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>
-            <span className="spinner-border spinner-border-sm me-2"></span>Loading...
-          </div>
+          <div className="lease-empty-state">Loading...</div>
         ) : (
-          <div className="pms-table-wrap">
-            <table className="pms-table">
+          <div className="table-wrap lease-table-wrap">
+            <table className="lease-table">
               <thead>
                 <tr>
                   <th>Lease ID</th>
-                  <th>Tenant</th>
-                  <th>Landlord</th>
+                  <th>Customer</th>
                   <th>Property</th>
-                  <th>Start Date</th>
-                  <th>End Date</th>
-                  <th>Monthly Rent</th>
-                  <th>Documents</th>
+                  <th>Start</th>
+                  <th>End</th>
+                  <th>Tenure</th>
+                  <th>Lease Value</th>
+                  <th>Advance</th>
                   <th>Status</th>
+                  <th>PDF</th>
                   <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(l => (
                   <tr key={l.id}>
-                    <td style={{ fontWeight: 600, color: "var(--maroon-main)", fontSize: "0.78rem" }}>{l.leaseId}</td>
-                    <td style={{ fontWeight: 500 }}>{l.tenant}</td>
-                    <td style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>{l.landlord}</td>
-                    <td style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>{l.property} {l.propertyUnit}</td>
-                    <td style={{ fontSize: "0.82rem" }}>{l.startDate}</td>
-                    <td style={{ fontSize: "0.82rem" }}>{l.endDate}</td>
-                    <td style={{ fontWeight: 600 }}>₹{Number(l.monthlyRent).toLocaleString("en-IN")}</td>
+                    <td className="lease-cell-id">{l.leaseId}</td>
+                    <td>{l.tenant}</td>
+                    <td>{l.property} {l.propertyUnit}</td>
+                    <td>{l.startDate}</td>
+                    <td>{l.endDate}</td>
+                    <td>{l.leaseTerm} months</td>
+                    <td className="lease-cell-amount">₹{Number(l.monthlyRent).toLocaleString('en-IN')}.00</td>
+                    <td className="lease-cell-amount">₹{Number(l.securityDeposit).toLocaleString('en-IN')}.00</td>
+                    <td><span className={`badge-lease ${statusColor[l.status]}`}>{l.status.toUpperCase()}</span></td>
                     <td>
-                      {l.docs && l.docs.length > 0 ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-                          {l.docs.map(d => (
-                            <DocChip key={d.name} name={d.name} onRemove={() => handleRemoveDoc(l.id, d.name)} />
-                          ))}
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>— No docs</span>
-                      )}
+                      <button className="lease-pdf-btn" type="button">
+                        <i className="bi bi-file-earmark-text"></i> PDF
+                      </button>
                     </td>
-                    <td><span className={`badge-pms ${statusColor[l.status]}`}>{l.status}</span></td>
-                    <td>
-                      <div style={{ display: "flex", gap: "0.4rem" }}>
-                        <button className="btn-pms sm secondary" onClick={() => handleEdit(l)}><i className="bi bi-pencil"></i></button>
-                        <button className="btn-pms sm danger" onClick={() => handleDelete(l.id)}><i className="bi bi-trash"></i></button>
-                      </div>
+                    <td className="lease-action-cell">
+                      <button className="lease-link-btn" onClick={() => handleEdit(l)}>Edit</button>
                     </td>
                   </tr>
                 ))}
                 {filtered.length === 0 && !loading && (
                   <tr>
-                    <td colSpan={10} style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>
-                      No lease agreements found.
-                    </td>
+                    <td colSpan={10} className="lease-empty-state">No lease agreements found.</td>
                   </tr>
                 )}
               </tbody>
@@ -473,6 +561,6 @@ export default function LeaseAgreement() {
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }

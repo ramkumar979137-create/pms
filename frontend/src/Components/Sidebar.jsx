@@ -39,7 +39,7 @@ const NAV = [
     items: [
       { path: "/maintenance",      label: "Maintenance Request Module",
         icon: "M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" },
-      { path: "/purchase-request", label: "Quotation Request Module",
+      { path: "/quotation-request", label: "Quotation Request Module",
         icon: "M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2 M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2 M9 5a2 2 0 0 0 2-2h2a2 2 0 0 0 2 2" },
       { path: "/quote-analysis",   label: "Quote Analysis Module",
         icon: "M18 20V10 M12 20V4 M6 20v-6" },

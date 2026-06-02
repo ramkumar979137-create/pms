@@ -1,296 +1,379 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import "../Css/Customers.css";
 
-/* ── Seed data ── */
-const SEED = [
+const INITIAL_CUSTOMERS = [
   {
-    id: "CUS-001", firstName: "Ravi",  lastName: "Krishnan",
-    type: "Tenant", occupation: "Business",
-    email: "ravi.k@email.com",  phone: "9840011111",
-    idType: "Aadhaar", idNumber: "123456789012",
-    address: "12 Anna Nagar, Chennai - 600040",
-    countryCode: "+91",
+    id: "CUS-001",
+    name: "Ravi Krishnan",
+    type: "TENANT",
+    occupation: "Business",
+    email: "ravi.k@email.com",
+    phone: "+91 9840011111",
+    idProofType: "Aadhaar",
+    idProofNumber: "••••••••••••9012",
   },
   {
-    id: "CUS-002", firstName: "Priya", lastName: "Sundaram",
-    type: "Owner",  occupation: "Self-Employed",
-    email: "priya.s@email.com", phone: "9840022222",
-    idType: "PAN",    idNumber: "ABCDE1234F",
-    address: "45 T Nagar, Chennai - 600017",
-    countryCode: "+91",
+    id: "CUS-002",
+    name: "Priya Sundaram",
+    type: "OWNER",
+    occupation: "Self-Employed",
+    email: "priya.s@email.com",
+    phone: "+91 9840022222",
+    idProofType: "PAN",
+    idProofNumber: "••••••234F",
   },
   {
-    id: "CUS-003", firstName: "Aarav", lastName: "Mehta",
-    type: "Tenant", occupation: "Employee",
-    email: "aarav.m@email.com", phone: "9840033333",
-    idType: "Passport", idNumber: "P1234567",
-    address: "78 Velachery, Chennai - 600042",
-    countryCode: "+91",
+    id: "CUS-003",
+    name: "Aarav Mehta",
+    type: "TENANT",
+    occupation: "Employee",
+    email: "aarav.m@email.com",
+    phone: "+91 9840033333",
+    idProofType: "Passport",
+    idProofNumber: "•••••4567",
   },
 ];
 
-const OCCUPATIONS   = ["Business", "Self-Employed", "Employee", "Student", "Retired", "Other"];
-const ID_TYPES      = ["Aadhaar", "PAN", "Passport", "Voter ID", "Driving Licence"];
-const COUNTRY_CODES = [{ code: "+91", label: "IN +91" }, { code: "+1", label: "US +1" }, { code: "+44", label: "UK +44" }];
+const EMPTY_FORM = {
+  firstName: "",
+  lastName: "",
+  type: "",
+  occupation: "",
+  gender: "",
+  dob: "",
+  address: "",
+  countryCode: "+91",
+  phone: "",
+  email: "",
+  idProofType: "",
+  idProofNumber: "",
+  documents: [],
+};
 
-/* Mask ID for table display */
-function maskId(type, num) {
-  if (!type || !num) return "—";
-  const tail = num.slice(-4);
-  const dots  = "·".repeat(Math.max(num.length - 4, 4));
-  return `${type} · ${dots}${tail}`;
+function maskId(num) {
+  if (!num) return "";
+  const visible = num.slice(-4);
+  return "•".repeat(Math.max(0, num.length - 4)) + visible;
 }
 
-/* Auto increment CUS id */
-function nextId(list) {
-  const max = list.reduce((acc, c) => {
-    const n = parseInt(c.id.replace("CUS-", ""), 10);
-    return n > acc ? n : acc;
-  }, 0);
-  return `CUS-${String(max + 1).padStart(3, "0")}`;
-}
+function NewCustomerModal({ onClose, onSave }) {
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [fileNames, setFileNames] = useState([]);
 
-/* ══════════════════════════════════
-   DIALOG COMPONENT
-══════════════════════════════════ */
-function CustomerDialog({ onClose, onSave, existing, newId }) {
-  const isEdit = !!existing;
-  const blank = {
-    id: newId, type: "Tenant",
-    firstName: "", lastName: "", occupation: "",
-    address: "", countryCode: "+91",
-    phone: "", email: "", idType: "", idNumber: "",
+  const set = (field, value) => setForm((f) => ({ ...f, [field]: value }));
+
+  const handleFile = (e) => {
+    const files = Array.from(e.target.files);
+    setFileNames(files.map((f) => f.name));
   };
-  const [form, setForm] = useState(isEdit ? { ...existing } : blank);
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const handleSave = () => {
-    if (!form.firstName.trim() || !form.lastName.trim() || !form.phone.trim() || !form.address.trim()) {
-      alert("பெயர், Phone, Address — இவை மூன்றும் அவசியம்.");
+  const handleSubmit = () => {
+    if (!form.firstName || !form.type || !form.phone) {
+      alert("Please fill in required fields: First Name, Type, Phone.");
       return;
     }
-    onSave(form);
+    const nextNum = Date.now();
+    const newCustomer = {
+      id: `CUS-${String(nextNum).slice(-3).padStart(3, "0")}`,
+      name: `${form.firstName} ${form.lastName}`.trim(),
+      type: form.type,
+      occupation: form.occupation,
+      email: form.email,
+      phone: `${form.countryCode} ${form.phone}`,
+      idProofType: form.idProofType,
+      idProofNumber: form.idProofNumber ? maskId(form.idProofNumber) : "—",
+    };
+    onSave(newCustomer);
+    onClose();
   };
 
-  /* Close on overlay click */
-  const handleOverlay = e => { if (e.target === e.currentTarget) onClose(); };
+  return createPortal(
+    <div className="customer-modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box customer-modal-large" role="dialog" aria-modal="true" aria-labelledby="modal-title">
 
-  return (
-    <div className="cm-overlay" onClick={handleOverlay}>
-      <div className="cm-dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-title">
-
-        {/* ── Header ── */}
-        <div className="cm-dialog-header">
-          <h2 id="dlg-title">{isEdit ? "Edit Customer" : "New Customer"}</h2>
-          <button className="cm-close-btn" onClick={onClose} aria-label="Close">×</button>
+        <div className="modal-header">
+          <h2 className="modal-title" id="modal-title">New Customer</h2>
+          <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
-        <div className="cm-dialog-body">
-
-          {/* ── BASIC INFORMATION ── */}
-          <p className="cm-section-title">Basic Information</p>
-          <div className="cm-form-grid g4">
-            <div className="cm-field">
-              <label>Customer ID</label>
-              <input value={form.id} readOnly />
-            </div>
-            <div className="cm-field">
-              <label>Type <span className="req">*</span></label>
-              <select value={form.type} onChange={e => set("type", e.target.value)}>
-                <option>Tenant</option>
-                <option>Owner</option>
-              </select>
-            </div>
-            <div className="cm-field">
-              <label>First Name <span className="req">*</span></label>
-              <input placeholder="First name" value={form.firstName} onChange={e => set("firstName", e.target.value)} />
-            </div>
-            <div className="cm-field">
-              <label>Last Name <span className="req">*</span></label>
-              <input placeholder="Last name" value={form.lastName} onChange={e => set("lastName", e.target.value)} />
-            </div>
+        <div className="modal-form">
+          {/* BASIC INFO */}
+          <div className="section-heading">
+            <span>Basic Information</span>
           </div>
 
-          {/* Occupation */}
-          <div className="cm-form-grid g2">
-            <div className="cm-field">
-              <label>Occupation</label>
-              <select value={form.occupation} onChange={e => set("occupation", e.target.value)}>
-                <option value="">— Select —</option>
-                {OCCUPATIONS.map(o => <option key={o}>{o}</option>)}
-              </select>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">First Name <span className="req">*</span></label>
+              <input
+                className="form-input"
+                placeholder="First name"
+                value={form.firstName}
+                onChange={(e) => set("firstName", e.target.value)}
+              />
             </div>
-          </div>
-
-          {/* Address */}
-          <div className="cm-form-grid g1">
-            <div className="cm-field">
-              <label>Address <span className="req">*</span></label>
-              <textarea
-                placeholder="Full address"
-                value={form.address}
-                onChange={e => set("address", e.target.value)}
+            <div className="form-group">
+              <label className="form-label">Last Name</label>
+              <input
+                className="form-input"
+                placeholder="Last name"
+                value={form.lastName}
+                onChange={(e) => set("lastName", e.target.value)}
               />
             </div>
           </div>
 
-          <hr className="cm-divider" />
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Type <span className="req">*</span></label>
+              <select
+                className="form-select"
+                value={form.type}
+                onChange={(e) => set("type", e.target.value)}
+              >
+                <option value="">— Select —</option>
+                <option value="TENANT">Tenant</option>
+                <option value="OWNER">Owner</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Occupation</label>
+              <select
+                className="form-select"
+                value={form.occupation}
+                onChange={(e) => set("occupation", e.target.value)}
+              >
+                <option value="">— Select —</option>
+                <option value="Business">Business</option>
+                <option value="Employee">Employee</option>
+                <option value="Self-Employed">Self-Employed</option>
+                <option value="Student">Student</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
 
-          {/* ── CONTACT & IDENTITY ── */}
-          <p className="cm-section-title">Contact &amp; Identity</p>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Gender</label>
+              <select
+                className="form-select"
+                value={form.gender}
+                onChange={(e) => set("gender", e.target.value)}
+              >
+                <option value="">— Select —</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Date of Birth</label>
+              <input
+                className="form-input"
+                type="date"
+                value={form.dob}
+                onChange={(e) => set("dob", e.target.value)}
+              />
+            </div>
+          </div>
 
-          {/* Mobile */}
-          <div className="cm-form-grid g1" style={{ marginBottom: 14 }}>
-            <div className="cm-field">
-              <label>Mobile Number <span className="req">*</span></label>
-              <div className="cm-phone-row">
-                <select value={form.countryCode} onChange={e => set("countryCode", e.target.value)}>
-                  {COUNTRY_CODES.map(c => (
-                    <option key={c.code} value={c.code}>{c.label}</option>
-                  ))}
+          <div className="form-row single">
+            <div className="form-group">
+              <label className="form-label">Address <span className="req">*</span></label>
+              <textarea
+                className="form-textarea"
+                placeholder="Full address"
+                value={form.address}
+                onChange={(e) => set("address", e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* CONTACT & IDENTITY */}
+          <div className="section-heading">
+            <span>Contact &amp; Identity</span>
+          </div>
+
+          <div className="form-row single">
+            <div className="form-group">
+              <label className="form-label">Mobile Number <span className="req">*</span></label>
+              <div className="phone-row">
+                <select
+                  className="country-code-select"
+                  value={form.countryCode}
+                  onChange={(e) => set("countryCode", e.target.value)}
+                >
+                  <option value="+91">IN +91</option>
+                  <option value="+1">US +1</option>
+                  <option value="+44">GB +44</option>
+                  <option value="+971">AE +971</option>
+                  <option value="+65">SG +65</option>
                 </select>
                 <input
+                  className="phone-input"
                   placeholder="Mobile number"
                   value={form.phone}
-                  onChange={e => set("phone", e.target.value)}
+                  onChange={(e) => set("phone", e.target.value)}
+                  maxLength={10}
+                  inputMode="numeric"
                 />
               </div>
             </div>
           </div>
 
-          <div className="cm-form-grid g2">
-            <div className="cm-field">
-              <label>Email</label>
-              <input type="email" placeholder="email@example.com" value={form.email} onChange={e => set("email", e.target.value)} />
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Email</label>
+              <input
+                className="form-input"
+                type="email"
+                placeholder="email@example.com"
+                value={form.email}
+                onChange={(e) => set("email", e.target.value)}
+              />
             </div>
-            <div className="cm-field">
-              <label>ID Proof Type</label>
-              <select value={form.idType} onChange={e => set("idType", e.target.value)}>
+            <div className="form-group">
+              <label className="form-label">ID Proof Type</label>
+              <select
+                className="form-select"
+                value={form.idProofType}
+                onChange={(e) => set("idProofType", e.target.value)}
+              >
                 <option value="">— Select —</option>
-                {ID_TYPES.map(t => <option key={t}>{t}</option>)}
+                <option value="Aadhaar">Aadhaar</option>
+                <option value="PAN">PAN</option>
+                <option value="Passport">Passport</option>
+                <option value="Voter ID">Voter ID</option>
+                <option value="Driving Licence">Driving Licence</option>
               </select>
             </div>
           </div>
 
-          <div className="cm-form-grid g2" style={{ marginTop: 14 }}>
-            <div className="cm-field">
-              <label>ID Proof Number</label>
+          <div className="form-row single">
+            <div className="form-group">
+              <label className="form-label">ID Proof Number</label>
               <input
+                className="form-input"
                 placeholder="ID number (will be masked in lists)"
-                value={form.idNumber}
-                onChange={e => set("idNumber", e.target.value)}
+                value={form.idProofNumber}
+                onChange={(e) => set("idProofNumber", e.target.value)}
               />
             </div>
           </div>
 
-          <hr className="cm-divider" />
-
-          {/* ── SUPPORTING DOCUMENTS ── */}
-          <p className="cm-section-title">Supporting Documents</p>
-          <div className="cm-upload-zone">
-            <input type="file" id="doc-upload" multiple accept=".pdf,.jpg,.jpeg,.png" />
-            <label className="cm-upload-label" htmlFor="doc-upload">Choose Files</label>
-            <p className="cm-upload-note">ID copy, address proof, etc. — multiple files allowed</p>
-            <p style={{ fontSize: 11, color: "#aaa", marginTop: 6 }}>No documents uploaded yet.</p>
+          {/* SUPPORTING DOCUMENTS */}
+          <div className="section-heading">
+            <span>Supporting Documents</span>
           </div>
 
+          <label className="upload-area" htmlFor="doc-upload">
+            <div className="upload-icon">📎</div>
+            <div className="upload-text">
+              <strong>Upload Documents</strong>
+            </div>
+            <div className="upload-sub">ID copy, address proof, etc. — multiple files allowed</div>
+            <input
+              id="doc-upload"
+              type="file"
+              multiple
+              style={{ display: "none" }}
+              onChange={handleFile}
+            />
+          </label>
+
+          {fileNames.length === 0 ? (
+            <p className="no-docs-text">No documents uploaded yet.</p>
+          ) : (
+            <ul style={{ marginTop: "0.75rem", paddingLeft: "1.2rem" }}>
+              {fileNames.map((n, i) => (
+                <li key={i} style={{ fontSize: "13px", color: "#4a4843", marginBottom: "4px" }}>
+                  {n}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
-        {/* ── Footer ── */}
-        <div className="cm-dialog-footer">
-          <button className="cm-cancel-btn" onClick={onClose}>Cancel</button>
-          <button className="cm-save-btn" onClick={handleSave}>Save Customer</button>
+        <div className="modal-footer">
+          <button className="btn-cancel" onClick={onClose}>Cancel</button>
+          <button className="btn-save" onClick={handleSubmit}>Save Customer</button>
         </div>
-
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
-/* ══════════════════════════════════
-   MAIN PAGE
-══════════════════════════════════ */
-export default function CustomerModule() {
-  const [customers, setCustomers] = useState(SEED);
-  const [search, setSearch]       = useState("");
-  const [filter, setFilter]       = useState("All Types");
-  const [dialog, setDialog]       = useState(null); // null | "add" | customer-object
+export default function Customers() {
+  const [customers, setCustomers] = useState(INITIAL_CUSTOMERS);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("All Types");
+  const [showModal, setShowModal] = useState(false);
 
-  /* Filtered list */
-  const visible = customers.filter(c => {
+  const filtered = customers.filter((c) => {
+    const matchType =
+      typeFilter === "All Types" || c.type === typeFilter.toUpperCase();
     const q = search.toLowerCase();
-    const matchQ = !q
-      || `${c.firstName} ${c.lastName}`.toLowerCase().includes(q)
-      || c.email.toLowerCase().includes(q)
-      || c.id.toLowerCase().includes(q)
-      || c.phone.includes(q);
-    const matchF = filter === "All Types" || c.type === filter;
-    return matchQ && matchF;
+    const matchSearch =
+      !q ||
+      c.name.toLowerCase().includes(q) ||
+      c.email.toLowerCase().includes(q) ||
+      c.id.toLowerCase().includes(q) ||
+      c.phone.includes(q);
+    return matchType && matchSearch;
   });
 
-  const handleSave = (form) => {
-    setCustomers(prev => {
-      const idx = prev.findIndex(c => c.id === form.id);
-      if (idx >= 0) {
-        const updated = [...prev];
-        updated[idx] = form;
-        return updated;
-      }
-      return [...prev, form];
-    });
-    setDialog(null);
-  };
-
   const handleDelete = (id) => {
-    if (window.confirm(`Delete customer ${id}?`)) {
-      setCustomers(prev => prev.filter(c => c.id !== id));
+    if (window.confirm("Delete this customer?")) {
+      setCustomers((prev) => prev.filter((c) => c.id !== id));
     }
   };
 
-  const SearchIcon = () => (
-    <svg width="14" height="14" fill="none" stroke="#7b91b0" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
-  );
+  const handleSave = (newCustomer) => {
+    setCustomers((prev) => [...prev, newCustomer]);
+  };
 
   return (
-    <div className="cm-page">
-
-      {/* Breadcrumb */}
-      <div className="cm-breadcrumb">Master / <em>Customer Module</em></div>
-
-      {/* Heading */}
-      <div className="cm-heading-row">
-        <h1>Customers</h1>
-        <span className="cm-subtitle">Tenants and property owners</span>
-      </div>
-
-      {/* Toolbar */}
-      <div className="cm-toolbar">
-        <div className="cm-search">
-          <SearchIcon />
-          <input
-            placeholder="Search by name, email, ID, phone..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+    <div className="page-wrapper">
+      <div className="breadcrumb">Master / Customer Module</div>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Customers</h1>
         </div>
-        <select className="cm-filter-select" value={filter} onChange={e => setFilter(e.target.value)}>
-          <option>All Types</option>
-          <option>Tenant</option>
-          <option>Owner</option>
-        </select>
-        <div className="cm-spacer" />
-        <button className="cm-add-btn" onClick={() => setDialog("add")}>+ Add Customer</button>
+        <span className="page-subtitle">Tenants and property owners</span>
       </div>
 
-      {/* Count */}
-      <div className="cm-record-count">{visible.length} record(s)</div>
+      <div className="card">
+        <div className="toolbar">
+          <button type="button" className="btn-add" onClick={() => setShowModal(true)}>
+            + Add Customer
+          </button>
+          <div className="search-wrap">
+            <span className="search-icon">🔍</span>
+            <input
+              className="search-input"
+              placeholder="Search by name, email, ID, phone..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <select
+            className="filter-select"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+          >
+            <option>All Types</option>
+            <option>Tenant</option>
+            <option>Owner</option>
+          </select>
+        </div>
 
-      {/* ── DESKTOP TABLE ── */}
-      <div className="cm-table-wrap">
-        <div className="cm-table-scroll">
-          <table className="cm-table">
+        <div className="record-count">{filtered.length} record(s)</div>
+
+        <div className="table-wrap">
+          <table>
             <thead>
               <tr>
                 <th>ID</th>
@@ -300,89 +383,54 @@ export default function CustomerModule() {
                 <th>Email</th>
                 <th>Phone</th>
                 <th>ID Proof</th>
-                <th colSpan={2}></th>
+                <th style={{ width: 120 }}></th>
               </tr>
             </thead>
             <tbody>
-              {visible.length === 0 && (
+              {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: "center", padding: 40, color: "#7b91b0" }}>
+                  <td colSpan={8} style={{ textAlign: "center", color: "#aaa", padding: "2rem" }}>
                     No customers found.
                   </td>
                 </tr>
+              ) : (
+                filtered.map((c) => (
+                  <tr key={c.id}>
+                    <td className="id-cell">{c.id}</td>
+                    <td>{c.name}</td>
+                    <td>
+                      <span className={`badge ${c.type === "TENANT" ? "badge-tenant" : "badge-owner"}`}>
+                        {c.type}
+                      </span>
+                    </td>
+                    <td>{c.occupation}</td>
+                    <td style={{ color: "#555" }}>{c.email}</td>
+                    <td>{c.phone}</td>
+                    <td style={{ color: "#555", fontSize: "13px" }}>
+                      {c.idProofType} · {c.idProofNumber}
+                    </td>
+                    <td>
+                      <div className="actions-cell">
+                        <button className="action-edit">Edit</button>
+                        <button className="action-delete" onClick={() => handleDelete(c.id)}>
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
-              {visible.map(c => (
-                <tr key={c.id}>
-                  <td><span className="cm-id">{c.id}</span></td>
-                  <td style={{ fontWeight: 500 }}>{c.firstName} {c.lastName}</td>
-                  <td>
-                    <span className={`cm-badge ${c.type.toLowerCase()}`}>{c.type}</span>
-                  </td>
-                  <td style={{ color: "#7b91b0" }}>{c.occupation || "—"}</td>
-                  <td style={{ color: "#7b91b0", fontSize: 13 }}>{c.email || "—"}</td>
-                  <td style={{ color: "#7b91b0" }}>{c.phone ? `${c.countryCode} ${c.phone}` : "—"}</td>
-                  <td style={{ fontSize: 12, color: "#7b91b0" }}>{maskId(c.idType, c.idNumber)}</td>
-                  <td style={{ width: 60 }}>
-                    <button className="cm-edit-btn" onClick={() => setDialog(c)}>Edit</button>
-                  </td>
-                  <td style={{ width: 70 }}>
-                    <button className="cm-del-btn" onClick={() => handleDelete(c.id)}>Delete</button>
-                  </td>
-                </tr>
-              ))}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* ── MOBILE CARD LIST ── */}
-      <div className="cm-mobile-list">
-        {visible.length === 0 && (
-          <p style={{ textAlign: "center", color: "#7b91b0", padding: "32px 0" }}>
-            No customers found.
-          </p>
-        )}
-        {visible.map(c => (
-          <div className="cm-mobile-card" key={c.id}>
-            <div className="cm-mc-top">
-              <div>
-                <div className="cm-mc-name">{c.firstName} {c.lastName}</div>
-                <div className="cm-mc-id">{c.id}</div>
-              </div>
-              <span className={`cm-badge ${c.type.toLowerCase()}`}>{c.type}</span>
-            </div>
-
-            {c.occupation && (
-              <div className="cm-mc-row">Occupation: <span>{c.occupation}</span></div>
-            )}
-            {c.email && (
-              <div className="cm-mc-row">Email: <span>{c.email}</span></div>
-            )}
-            {c.phone && (
-              <div className="cm-mc-row">Phone: <span>{c.countryCode} {c.phone}</span></div>
-            )}
-            {c.idType && (
-              <div className="cm-mc-row">ID: <span>{maskId(c.idType, c.idNumber)}</span></div>
-            )}
-
-            <div className="cm-mc-actions">
-              <button className="cm-edit-btn" onClick={() => setDialog(c)}>Edit</button>
-              <button className="cm-del-btn" onClick={() => handleDelete(c.id)}>Delete</button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* ── DIALOG ── */}
-      {dialog && (
-        <CustomerDialog
-          onClose={() => setDialog(null)}
+      {showModal && (
+        <NewCustomerModal
+          onClose={() => setShowModal(false)}
           onSave={handleSave}
-          existing={dialog === "add" ? null : dialog}
-          newId={nextId(customers)}
         />
       )}
-
     </div>
   );
 }

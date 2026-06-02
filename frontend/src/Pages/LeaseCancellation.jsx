@@ -1,318 +1,441 @@
-// Pages/LeaseCancellation.jsx
-import { useState, useEffect, useRef } from "react";
-import axios from "axios";
-import "../Css/Global.css";
+// LeaseCancellationModule.jsx
+// AUM Sol Corp PMS — Lease Cancellation Module
+// Design: matches existing PMS style (cream bg, white card, navy table, gold accents)
 
-const API = "http://localhost:5000/api/lease-cancellations";
-const statusOptions = ["Pending", "Approved", "Rejected"];
-const statusColor = { Pending: "warning", Approved: "success", Rejected: "danger" };
+import { useState } from 'react'
+import '../Css/LeaseCancellation.css'
 
-const emptyForm = {
-  leaseId: "",
-  tenant: "",
-  property: "",
-  propertyUnit: "",
-  requestDate: "",
-  vacateDate: "",
-  reason: "",
-  penaltyAmount: "",
-  status: "Pending",
-  userId: 1,
-};
+/* ─────────────────────────────────────
+   Constants
+───────────────────────────────────── */
+const REFUND_POLICIES = [
+  'Full refund of deposit',
+  'Partial refund (50%)',
+  'No refund',
+  'Prorated refund',
+  'Custom amount',
+]
 
-function fileIcon(name = "") {
-  const ext = name.split(".").pop()?.toLowerCase();
-  if (ext === "pdf") return { icon: "bi-file-earmark-pdf-fill", color: "#c0392b" };
-  if (["jpg", "jpeg", "png"].includes(ext)) return { icon: "bi-file-earmark-image-fill", color: "#1565a0" };
-  if (["doc", "docx"].includes(ext)) return { icon: "bi-file-earmark-word-fill", color: "#2980b9" };
-  return { icon: "bi-file-earmark-fill", color: "#6b7a90" };
+const CURRENCIES = [
+  { code: 'INR', symbol: '₹' },
+  { code: 'USD', symbol: '$' },
+  { code: 'EUR', symbol: '€' },
+]
+
+const STATUSES = ['Cancelled', 'Pending Approval', 'Disputed']
+
+/* ─────────────────────────────────────
+   Seed Leases (mock active leases)
+───────────────────────────────────── */
+const ACTIVE_LEASES = [
+  {
+    id: 'LSE-001',
+    customer: 'Ravi Krishnan',
+    property: '12 Anna Nagar, Chennai',
+    leaseStart: '2024-01-01',
+    leaseEnd: '2025-12-31',
+    value: 480000,
+  },
+  {
+    id: 'LSE-002',
+    customer: 'Priya Sundaram',
+    property: '45 T Nagar, Chennai',
+    leaseStart: '2024-03-15',
+    leaseEnd: '2025-03-14',
+    value: 360000,
+  },
+  {
+    id: 'LSE-003',
+    customer: 'Aarav Mehta',
+    property: '78 Velachery, Chennai',
+    leaseStart: '2024-06-01',
+    leaseEnd: '2026-05-31',
+    value: 300000,
+  },
+]
+
+/* ─────────────────────────────────────
+   Helpers
+───────────────────────────────────── */
+function nextId(list) {
+  const max = list.reduce((acc, r) => {
+    const n = parseInt(r.id.replace('LCN-', ''), 10)
+    return n > acc ? n : acc
+  }, 0)
+  return `LCN-${String(max + 1).padStart(3, '0')}`
 }
 
-function DocChip({ name, onRemove }) {
-  const { icon, color } = fileIcon(name);
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", background: "var(--cream-dark)", border: "1.5px solid var(--border)", borderRadius: 8, padding: "0.3rem 0.65rem", fontSize: "0.78rem", color: "var(--text-mid)", maxWidth: 220 }}>
-      <i className={`bi ${icon}`} style={{ color, fontSize: "0.95rem", flexShrink: 0 }}></i>
-      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{name}</span>
-      {onRemove && (
-        <button onClick={onRemove} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--danger)", padding: 0, fontSize: "0.8rem", flexShrink: 0 }}>
-          <i className="bi bi-x-lg"></i>
-        </button>
-      )}
-    </div>
-  );
+function today() {
+  return new Date().toISOString().split('T')[0]
 }
 
-export default function LeaseCancellation() {
-  const [cancellations, setCancellations] = useState([]);
-  const [showForm, setShow] = useState(false);
-  const [form, setForm] = useState(emptyForm);
-  const [files, setFiles] = useState([]);
-  const [filter, setFilter] = useState("All");
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [dragOver, setDragOver] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const fileRef = useRef();
+function blankForm(id) {
+  return {
+    id,
+    cancelDate: today(),
+    leaseId: '',
+    customer: '',
+    property: '',
+    leaseStart: '',
+    leaseEnd: '',
+    leaseValue: '',
+    currency: 'INR',
+    refundAmount: '0.00',
+    refundPolicy: 'Full refund of deposit',
+    reason: '',
+    status: 'Cancelled',
+  }
+}
 
-  const fetchCancellations = async () => {
-    setLoading(true);
-    try {
-      const params = {};
-      if (filter !== "All") params.status = filter;
-      if (search) params.tenant = search;
-      const res = await axios.get(API, { params });
-      setCancellations(res.data || []);
-    } catch {
-      setError("Unable to load lease cancellations.");
-    } finally {
-      setLoading(false);
+function formatCurrency(cur, amount) {
+  const sym = CURRENCIES.find(c => c.code === cur)?.symbol || '₹'
+  return `${sym} ${Number(amount).toLocaleString('en-IN')}`
+}
+
+function formatDate(d) {
+  if (!d) return '—'
+  const [y, m, day] = d.split('-')
+  return `${day}-${m}-${y}`
+}
+
+const statusClass = s => {
+  if (s === 'Cancelled')       return 'badgeCancelled'
+  if (s === 'Pending Approval') return 'badgePending'
+  if (s === 'Disputed')        return 'badgeDisputed'
+  return ''
+}
+
+/* ─────────────────────────────────────
+   Modal Form
+───────────────────────────────────── */
+function CancellationForm({ form, onChange }) {
+  const set = (k, v) => onChange({ ...form, [k]: v })
+
+  const handleLeaseSelect = leaseId => {
+    const lease = ACTIVE_LEASES.find(l => l.id === leaseId)
+    if (lease) {
+      onChange({
+        ...form,
+        leaseId: lease.id,
+        customer: lease.customer,
+        property: lease.property,
+        leaseStart: lease.leaseStart,
+        leaseEnd: lease.leaseEnd,
+        leaseValue: lease.value,
+      })
+    } else {
+      onChange({
+        ...form,
+        leaseId: '',
+        customer: '',
+        property: '',
+        leaseStart: '',
+        leaseEnd: '',
+        leaseValue: '',
+      })
     }
-  };
-
-  useEffect(() => { fetchCancellations(); }, [filter]);
-
-  const addFiles = (list) => {
-    const arr = Array.from(list);
-    const unique = arr.filter((file) => !files.find((x) => x.name === file.name));
-    setFiles((prev) => [...prev, ...unique]);
-  };
-
-  const removeFile = (name) => setFiles((prev) => prev.filter((file) => file.name !== name));
-  const handleDrop = (e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    setError("");
-
-    try {
-      const fd = new FormData();
-      const user = JSON.parse(localStorage.getItem("pms_user") || "{}");
-      Object.entries(form).forEach(([key, value]) => fd.append(key, String(value)));
-      fd.append("userId", String(user.id || 1));
-      files.forEach((file) => fd.append("docs", file));
-
-      if (editingId) {
-        await axios.put(`${API}/${editingId}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
-      } else {
-        await axios.post(API, fd, { headers: { "Content-Type": "multipart/form-data" } });
-      }
-
-      setForm(emptyForm);
-      setFiles([]);
-      setShow(false);
-      setEditingId(null);
-      fetchCancellations();
-    } catch (err) {
-      setError(err?.response?.data?.message || "Unable to save lease cancellation.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleEdit = (item) => {
-    setForm({
-      leaseId: item.leaseId || "",
-      tenant: item.tenant || "",
-      property: item.property || "",
-      propertyUnit: item.propertyUnit || "",
-      requestDate: item.requestDate || "",
-      vacateDate: item.vacateDate || "",
-      reason: item.reason || "",
-      penaltyAmount: item.penaltyAmount ?? "",
-      status: item.status || "Pending",
-      userId: item.userId || 1,
-    });
-    setEditingId(item.id);
-    setShow(true);
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this lease cancellation request?")) return;
-    try {
-      await axios.delete(`${API}/${id}`);
-      fetchCancellations();
-    } catch {
-      setError("Failed to delete.");
-    }
-  };
-
-  const handleStatusChange = async (id, status) => {
-    try {
-      await axios.put(`${API}/${id}`, { status });
-      fetchCancellations();
-    } catch {
-      setError("Unable to update status.");
-    }
-  };
-
-  const handleRemoveDoc = async (id, fileName) => {
-    try {
-      await axios.delete(`${API}/${id}/doc/${encodeURIComponent(fileName)}`);
-      fetchCancellations();
-    } catch {
-      setError("Unable to remove document.");
-    }
-  };
-
-  const filtered = cancellations.filter((item) =>
-    item.tenant?.toLowerCase().includes(search.toLowerCase()) ||
-    item.property?.toLowerCase().includes(search.toLowerCase()) ||
-    item.leaseId?.toLowerCase().includes(search.toLowerCase())
-  );
+  }
 
   return (
-    <>
-      <div className="page-header">
-        <h2><i className="bi bi-file-earmark-x-fill" style={{ marginRight: 8, color: "var(--maroon-main)" }}></i>Lease Cancellations</h2>
-        <p>Track lease cancellation requests, penalty amounts and supporting documents.</p>
+    <div className="lcFormGrid">
+
+      {/* Row 1: Record ID + Cancel Date */}
+      <div className="lcField">
+        <label className="lcLabel">Record ID</label>
+        <input className="lcInput lcReadonly" value={form.id} readOnly />
       </div>
 
-      <div className="stat-grid">
-        {statusOptions.map((status) => (
-          <div className="stat-card" key={status}>
-            <div className={`stat-icon ${statusColor[status]}`}><i className="bi bi-file-earmark-x-fill"></i></div>
-            <div>
-              <div className="stat-label">{status}</div>
-              <div className="stat-value">{cancellations.filter((item) => item.status === status).length}</div>
-            </div>
-          </div>
-        ))}
-        <div className="stat-card">
-          <div className="stat-icon gold"><i className="bi bi-cash-stack"></i></div>
-          <div>
-            <div className="stat-label">Total Penalty</div>
-            <div className="stat-value">₹{cancellations.filter((item) => item.status === "Approved").reduce((sum, item) => sum + Number(item.penaltyAmount || 0), 0).toLocaleString("en-IN")}</div>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "center" }}>
+      <div className="lcField">
+        <label className="lcLabel">Cancellation Date <span className="lcReq">*</span></label>
         <input
-          style={{ flex: 1, minWidth: 180, border: "1.5px solid var(--border)", borderRadius: 9, padding: "0.55rem 0.85rem", fontSize: "0.88rem", background: "var(--white)", fontFamily: "DM Sans,sans-serif", color: "var(--text-dark)" }}
-          placeholder="🔍 Search lease, tenant or property..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && fetchCancellations()}
+          type="date"
+          className="lcInput"
+          value={form.cancelDate}
+          onChange={e => set('cancelDate', e.target.value)}
         />
-        {['All', ...statusOptions].map((status) => (
-          <button key={status} className={`btn-pms ${filter === status ? "primary" : "secondary"}`} style={{ padding: "0.4rem 0.9rem", fontSize: "0.82rem" }} onClick={() => setFilter(status)}>{status}</button>
-        ))}
-        <button className="btn-pms gold" onClick={() => { setShow(!showForm); setEditingId(null); setForm(emptyForm); setFiles([]); }}>
-          <i className="bi bi-plus-lg"></i> New Request
-        </button>
       </div>
 
-      {error && (
-        <div style={{ background: "#fdf0f0", border: "1.5px solid #e8b0b0", borderRadius: 10, padding: "0.7rem 1rem", marginBottom: "1rem", fontSize: "0.87rem", color: "var(--maroon-dark)" }}>
-          <i className="bi bi-exclamation-circle me-2"></i>{error}
-          <button onClick={() => setError("")} style={{ float: "right", background: "none", border: "none", cursor: "pointer", fontSize: "0.9rem" }}>✕</button>
-        </div>
-      )}
+      {/* Row 2: Lease dropdown (full width) */}
+      <div className="lcField lcFull">
+        <label className="lcLabel">Lease <span className="lcReq">*</span></label>
+        <select
+          className="lcSelect"
+          value={form.leaseId}
+          onChange={e => handleLeaseSelect(e.target.value)}
+        >
+          <option value="">— Select active lease —</option>
+          {ACTIVE_LEASES.map(l => (
+            <option key={l.id} value={l.id}>
+              {l.id} — {l.customer} · {l.property}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      {showForm && (
-        <div className="pms-card" style={{ marginBottom: "1.25rem" }}>
-          <h3 style={{ fontSize: "1rem", marginBottom: "1.25rem" }}>{editingId ? "Edit Lease Cancellation" : "New Lease Cancellation"}</h3>
-          <form onSubmit={handleSubmit}>
-            <div className="form-grid" style={{ marginBottom: "1rem" }}>
-              <div className="field-group"><label>Lease ID *</label><input required value={form.leaseId} onChange={(e) => setForm({ ...form, leaseId: e.target.value })} placeholder="LA003" /></div>
-              <div className="field-group"><label>Tenant *</label><input required value={form.tenant} onChange={(e) => setForm({ ...form, tenant: e.target.value })} placeholder="Kiran Mehta" /></div>
-              <div className="field-group"><label>Property *</label><input required value={form.property} onChange={(e) => setForm({ ...form, property: e.target.value })} placeholder="Green Villa 3" /></div>
-              <div className="field-group"><label>Unit</label><input value={form.propertyUnit} onChange={(e) => setForm({ ...form, propertyUnit: e.target.value })} placeholder="102" /></div>
-              <div className="field-group"><label>Request Date *</label><input required type="date" value={form.requestDate} onChange={(e) => setForm({ ...form, requestDate: e.target.value })} /></div>
-              <div className="field-group"><label>Vacate Date *</label><input required type="date" value={form.vacateDate} onChange={(e) => setForm({ ...form, vacateDate: e.target.value })} /></div>
-              <div className="field-group"><label>Penalty Amount</label><input type="number" value={form.penaltyAmount} onChange={(e) => setForm({ ...form, penaltyAmount: e.target.value })} placeholder="0" /></div>
-              <div className="field-group"><label>Status</label><select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>{statusOptions.map((status) => <option key={status}>{status}</option>)}</select></div>
-              <div className="field-group form-full"><label>Reason *</label><textarea required value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="Reason for cancellation" /></div>
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", marginBottom: "1rem" }}>
-              <div style={{ flex: 1, minWidth: 260 }}>
-                <label style={{ fontWeight: 600, display: "block", marginBottom: "0.35rem" }}>Supporting Documents</label>
-                <div
-                  onDrop={handleDrop}
-                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                  onDragLeave={() => setDragOver(false)}
-                  style={{ minHeight: 120, border: `2px dashed ${dragOver ? "var(--primary)" : "var(--border)"}`, borderRadius: 14, padding: "1rem", background: dragOver ? "rgba(45, 93, 252, 0.05)" : "var(--white)", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", cursor: "pointer" }}
-                  onClick={() => fileRef.current?.click()}
-                >
-                  <div>
-                    <p style={{ marginBottom: 8, fontWeight: 600 }}>Drag files here or click to upload</p>
-                    <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--text-muted)" }}>PDF, JPG, PNG, DOC, DOCX</p>
-                  </div>
-                </div>
-                <input ref={fileRef} type="file" multiple hidden onChange={(e) => addFiles(e.target.files)} />
-              </div>
-              <div style={{ flex: 1, minWidth: 260, display: "grid", gap: "0.65rem" }}>
-                {files.map((file) => <DocChip key={file.name} name={file.name} onRemove={() => removeFile(file.name)} />)}
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-              <button className="btn-pms primary" type="submit" disabled={saving}>{saving ? "Saving..." : "Save"}</button>
-              <button className="btn-pms secondary" type="button" onClick={() => { setShow(false); setEditingId(null); setForm(emptyForm); setFiles([]); }}>Cancel</button>
-            </div>
-          </form>
-        </div>
-      )}
+      {/* Row 3: Auto-filled lease details */}
+      <div className="lcField">
+        <label className="lcLabel">Customer</label>
+        <input className="lcInput lcReadonly" value={form.customer} readOnly placeholder="" />
+      </div>
 
-      <div className="pms-card">
-        <div className="pms-table-wrap">
-          <table className="pms-table">
+      <div className="lcField">
+        <label className="lcLabel">Property</label>
+        <input className="lcInput lcReadonly" value={form.property} readOnly placeholder="" />
+      </div>
+
+      <div className="lcField">
+        <label className="lcLabel">Lease Start</label>
+        <input className="lcInput lcReadonly" value={form.leaseStart ? formatDate(form.leaseStart) : ''} readOnly placeholder="" />
+      </div>
+
+      <div className="lcField">
+        <label className="lcLabel">Lease End</label>
+        <input className="lcInput lcReadonly" value={form.leaseEnd ? formatDate(form.leaseEnd) : ''} readOnly placeholder="" />
+      </div>
+
+      <div className="lcField">
+        <label className="lcLabel">Original Lease Value</label>
+        <input
+          className="lcInput lcReadonly"
+          value={form.leaseValue ? formatCurrency(form.currency, form.leaseValue) : ''}
+          readOnly
+          placeholder=""
+        />
+      </div>
+
+      {/* ── REFUND & REASON section ── */}
+      <div className="lcSectionTitle">Refund &amp; Reason</div>
+
+      {/* Refund Amount */}
+      <div className="lcField">
+        <label className="lcLabel">Refund Amount</label>
+        <div className="lcAmountRow">
+          <select
+            className="lcSelect lcCurrencySelect"
+            value={form.currency}
+            onChange={e => set('currency', e.target.value)}
+          >
+            {CURRENCIES.map(c => (
+              <option key={c.code} value={c.code}>{c.symbol} {c.code}</option>
+            ))}
+          </select>
+          <input
+            type="number"
+            className="lcInput"
+            value={form.refundAmount}
+            min="0"
+            step="0.01"
+            onChange={e => set('refundAmount', e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* Refund Policy */}
+      <div className="lcField">
+        <label className="lcLabel">Refund Policy</label>
+        <select
+          className="lcSelect"
+          value={form.refundPolicy}
+          onChange={e => set('refundPolicy', e.target.value)}
+        >
+          {REFUND_POLICIES.map(p => <option key={p}>{p}</option>)}
+        </select>
+      </div>
+
+      {/* Reason (full width) */}
+      <div className="lcField lcFull">
+        <label className="lcLabel">Reason for Cancellation</label>
+        <textarea
+          className="lcTextarea"
+          placeholder="Why is this lease being cancelled?"
+          value={form.reason}
+          onChange={e => set('reason', e.target.value)}
+        />
+      </div>
+
+      {/* Status */}
+      <div className="lcField">
+        <label className="lcLabel">Status</label>
+        <select
+          className="lcSelect"
+          value={form.status}
+          onChange={e => set('status', e.target.value)}
+        >
+          {STATUSES.map(s => <option key={s}>{s}</option>)}
+        </select>
+      </div>
+
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────
+   Modal — inline (no createPortal)
+───────────────────────────────────── */
+function CancellationModal({ form, onChange, onClose, onSave }) {
+  const handleSave = () => {
+    if (!form.leaseId || !form.cancelDate) {
+      alert('Lease and Cancellation Date are required.')
+      return
+    }
+    onSave(form)
+  }
+
+  const onBackdropClick = e => {
+    if (e.target === e.currentTarget) onClose()
+  }
+
+  return (
+    <div className="lcBackdrop" onClick={onBackdropClick}>
+      <div className="lcModal" role="dialog" aria-modal="true">
+
+        <div className="lcModalHeader">
+          <span className="lcModalTitle">Cancel Lease Agreement</span>
+          <button className="lcCloseBtn" onClick={onClose} aria-label="Close">×</button>
+        </div>
+
+        <div className="lcModalBody">
+          <CancellationForm form={form} onChange={onChange} />
+        </div>
+
+        <div className="lcModalFooter">
+          <button className="lcBtnOutline" onClick={onClose}>Cancel</button>
+          <button className="lcBtnDanger" onClick={handleSave}>Confirm Cancellation</button>
+        </div>
+
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────
+   Main Page
+───────────────────────────────────── */
+export default function LeaseCancellationModule() {
+  const [records, setRecords] = useState([])
+  const [modal, setModal]     = useState(null) // null | { form }
+
+  const openNew    = ()   => setModal({ form: blankForm(nextId(records)) })
+  const closeModal = ()   => setModal(null)
+  const updateForm = form => setModal(prev => ({ ...prev, form }))
+
+  const handleSave = form => {
+    setRecords(prev => [...prev, form])
+    closeModal()
+  }
+
+  const handleDelete = id => {
+    if (window.confirm(`Delete record ${id}?`))
+      setRecords(prev => prev.filter(r => r.id !== id))
+  }
+
+  return (
+    <div className="lcPageWrapper">
+
+      {/* Page Header */}
+      <div className="lcBreadcrumb">Agreements / Lease Cancellation Module</div>
+      <div className="lcTitleRow">
+        <h1 className="lcPageTitle">Lease Cancellations</h1>
+        <span className="lcPageSubtitle">Process lease terminations with refund tracking</span>
+      </div>
+
+      {/* Content Card */}
+      <div className="lcContentCard">
+
+        {/* Toolbar */}
+        <div className="lcToolbar">
+          <div className="lcSpacer" />
+          <button className="lcNewBtn" onClick={openNew}>+ New Cancellation</button>
+        </div>
+
+        {/* Table */}
+        <div className="table-wrap lcTableWrap">
+          <table className="lcTable">
             <thead>
               <tr>
-                <th>ID</th>
+                <th>Record ID</th>
                 <th>Lease ID</th>
-                <th>Tenant</th>
+                <th>Customer</th>
                 <th>Property</th>
-                <th>Request</th>
-                <th>Vacate</th>
-                <th>Penalty</th>
+                <th>Cancel Date</th>
+                <th>Refund</th>
+                <th>Policy</th>
                 <th>Status</th>
-                <th>Actions</th>
+                <th colSpan={2}></th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((item) => (
-                <tr key={item.id}>
-                  <td style={{ fontWeight: 600, color: "var(--maroon-main)" }}>{item.cancellationId || item.id}</td>
-                  <td><span className="badge-pms info">{item.leaseId}</span></td>
-                  <td style={{ fontWeight: 500 }}>{item.tenant}</td>
-                  <td style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>{item.property}</td>
-                  <td style={{ fontSize: "0.82rem" }}>{item.requestDate}</td>
-                  <td style={{ fontSize: "0.82rem" }}>{item.vacateDate}</td>
-                  <td style={{ fontWeight: 600, color: item.penaltyAmount > 0 ? "var(--danger)" : "var(--text-muted)" }}>{item.penaltyAmount ? `₹${Number(item.penaltyAmount).toLocaleString("en-IN")}` : "—"}</td>
-                  <td><span className={`badge-pms ${statusColor[item.status]}`}>{item.status}</span></td>
-                  <td>
-                    <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
-                      <button className="btn-pms sm secondary" onClick={() => handleEdit(item)}><i className="bi bi-pencil"></i></button>
-                      <button className="btn-pms sm danger" onClick={() => handleDelete(item.id)}><i className="bi bi-trash"></i></button>
-                      {item.status === "Pending" && (
-                        <>
-                          <button className="btn-pms sm success" onClick={() => handleStatusChange(item.id, "Approved")}><i className="bi bi-check-lg"></i></button>
-                          <button className="btn-pms sm danger" onClick={() => handleStatusChange(item.id, "Rejected")}><i className="bi bi-x-lg"></i></button>
-                        </>
-                      )}
-                    </div>
-                    {item.docs?.length > 0 && (
-                      <div style={{ marginTop: "0.6rem", display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
-                        {item.docs.map((doc) => (
-                          <span key={doc.name} style={{ display: "flex", alignItems: "center", gap: "0.35rem", padding: "0.25rem 0.55rem", borderRadius: 8, border: "1px solid var(--border)", background: "var(--cream-dark)", fontSize: "0.78rem" }}>
-                            <i className={`bi ${fileIcon(doc.name).icon}`} style={{ color: fileIcon(doc.name).color }}></i>
-                            <a href={doc.url} target="_blank" rel="noreferrer" style={{ color: "var(--text-dark)", textDecoration: "none" }}>{doc.name}</a>
-                            <button onClick={() => handleRemoveDoc(item.id, doc.name)} style={{ border: "none", background: "none", color: "var(--danger)", cursor: "pointer" }}><i className="bi bi-x"></i></button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
+              {records.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="lcEmptyState">
+                    No cancellations recorded
                   </td>
                 </tr>
-              ))}
+              ) : (
+                records.map(r => (
+                  <tr key={r.id}>
+                    <td><span className="lcRecordId">{r.id}</span></td>
+                    <td>{r.leaseId || '—'}</td>
+                    <td>{r.customer || '—'}</td>
+                    <td className="lcPropertyCell">{r.property || '—'}</td>
+                    <td>{formatDate(r.cancelDate)}</td>
+                    <td>{r.refundAmount > 0 ? formatCurrency(r.currency, r.refundAmount) : '—'}</td>
+                    <td className="lcPolicyCell">{r.refundPolicy}</td>
+                    <td>
+                      <span className={`lcBadge ${statusClass(r.status)}`}>{r.status}</span>
+                    </td>
+                    <td style={{ width: 50 }}>
+                      <button className="lcEditBtn" onClick={() => {}}>Edit</button>
+                    </td>
+                    <td style={{ width: 66 }}>
+                      <button className="lcDeleteBtn" onClick={() => handleDelete(r.id)}>Delete</button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
+
+        {/* Mobile Cards */}
+        <div className="lcMobileList">
+          {records.length === 0 && (
+            <p style={{ textAlign: 'center', color: '#888', padding: '32px 0' }}>
+              No cancellations recorded
+            </p>
+          )}
+          {records.map(r => (
+            <div className="lcMobileCard" key={r.id}>
+              <div className="lcMcTop">
+                <div>
+                  <div className="lcMcId">{r.id}</div>
+                  <div className="lcMcLease">Lease: {r.leaseId || '—'}</div>
+                </div>
+                <span className={`lcBadge ${statusClass(r.status)}`}>{r.status}</span>
+              </div>
+              <div className="lcMcRow">Customer: <span>{r.customer || '—'}</span></div>
+              <div className="lcMcRow">Property: <span>{r.property || '—'}</span></div>
+              <div className="lcMcRow">Cancel Date: <span>{formatDate(r.cancelDate)}</span></div>
+              <div className="lcMcRow">Refund: <span>{r.refundAmount > 0 ? formatCurrency(r.currency, r.refundAmount) : '—'}</span></div>
+              <div className="lcMcActions">
+                <button className="lcDeleteBtn" onClick={() => handleDelete(r.id)}>Delete</button>
+              </div>
+            </div>
+          ))}
+        </div>
+
       </div>
-    </>
-  );
+
+      {/* Modal */}
+      {modal && (
+        <CancellationModal
+          form={modal.form}
+          onChange={updateForm}
+          onClose={closeModal}
+          onSave={handleSave}
+        />
+      )}
+
+    </div>
+  )
 }

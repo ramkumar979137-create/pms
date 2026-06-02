@@ -1,36 +1,39 @@
-/* ===== GLOBAL.CSS ===== */
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Lato:wght@300;400;600;700&display=swap');
+/* ═══════════════════════════════════════
+   AUM Sol Corp PMS — globals.css
+   CSS Variables ONLY (from AUM_PMS_Full_Structure.md)
+═══════════════════════════════════════ */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,600&family=Inter:wght@300;400;500;600&display=swap');
+
+:root {
+  --navy:      #0d1b2a;
+  --navy-2:    #1b263b;
+  --navy-3:    #2c3e5a;
+  --gold:      #c9a961;
+  --gold-soft: #e5d3a3;
+  --cream:     #faf7f0;
+  --paper:     #ffffff;
+  --line:      #e6e1d5;
+  --ink:       #1a1a1a;
+  --muted:     #6b6b6b;
+  --green:     #2d6a4f;
+  --amber:     #b8860b;
+  --red:       #a4161a;
+  --shadow:    0 1px 2px rgba(13,27,42,.04), 0 8px 24px rgba(13,27,42,.06);
+}
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-body {
-  font-family: 'Lato', sans-serif;
-  background: #f5f0e8;
-  color: #1e293b;
-  -webkit-font-smoothing: antialiased;
-}
-
-/* ── Layout shell ─────────────────────────────────────── */
-.pms-layout {
-  display: flex;
+html, body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
   min-height: 100vh;
 }
 
-/* ── Main area: pushed right of sidebar, below header ─── */
-.pms-main {
-  margin-left: 240px;         /* sidebar width */
-  margin-top: 62px;           /* header height */
-  flex: 1;
-  min-height: calc(100vh - 62px);
-  background: #f5f0e8;
-}
-
-@media (max-width: 768px) {
-  .pms-main { margin-left: 0; }
-}
-
-/* ── Page content padding ─────────────────────────────── */
-.pms-content {
-  flex: 1;
-  padding: 0;      /* Dashboard.jsx handles its own padding */
+h1, h2, h3, h4 {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }

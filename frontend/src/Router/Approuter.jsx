@@ -22,7 +22,7 @@ import RentalAgreement   from "../Pages/RentalAgreement";
 import RentalCancellation from "../Pages/RentalCancellation";
 import Maintenance       from "../Pages/Maintenance";
 import Vendors           from "../Pages/Vendors";
-import PurchaseRequest   from "../Pages/Purchaserequest";
+import QuotationRequests   from "../Pages/QuotationRequest";
 import QuoteAnalysis     from "../Pages/Quoteanalysis";
 import ContractCreation  from "../Pages/Contractapproval";
 import ContractApproval  from "../Pages/Contractapproval";
@@ -33,13 +33,13 @@ import "../Css/Global.css";
 /* ── Protected Route ── */
 function ProtectedRoute({ children }) {
   const user = localStorage.getItem("pms_user");
-  return user ?  <Navigate to="/login" replace /> : children ;
+  return user ? children : <Navigate to="/login" replace />;
 }
 
 /* ── Auth Route (redirect if already logged in) ── */
 function AuthRoute({ children }) {
   const user = localStorage.getItem("pms_user");
-  return !user ? <Navigate to="/dashboard" replace /> : children;
+  return user ? <Navigate to="/dashboard" replace /> : children;
 }
 
 /* ── Wrapped page helper ── */
@@ -82,7 +82,7 @@ export default function AppRouter() {
         <Route path="/vendors"            element={<Page component={Vendors}          />} />
 
         {/* Phase 4 */}
-        <Route path="/purchase-request"   element={<Page component={PurchaseRequest}  />} />
+        <Route path="/quotation-request"   element={<Page component={QuotationRequests}  />} />
         <Route path="/quote-analysis"     element={<Page component={QuoteAnalysis}    />} />
         <Route path="/contract-creation"  element={<Page component={ContractCreation} />} />
         <Route path="/contract-approval"  element={<Page component={ContractApproval} />} />
@@ -110,11 +110,6 @@ function AuthShell({ page }) {
     if (target === "signup") navigate("/signup");
     else navigate("/login");
   };
-
-  const tabs = [
-    { id: "login", label: "Login" },
-    { id: "signup", label: "Sign Up" },
-  ];
 
   return (
     <div style={{ display:"flex", minHeight:"100vh", background:"rgb(232, 226, 213)" }}>

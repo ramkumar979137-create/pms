@@ -3,8 +3,8 @@ import { AppDataSource } from "../config/data-source";
 import { User } from "../Entity/User";
 import { SignupDTO, LoginDTO } from "../DTO/Auth.dto";
 
-import { hashPassword } from "../Utils/Hash"; // 
-const comparePassword = require("../Utils/Hash"); // comparePassword export from same file
+import { hashPassword, comparePassword } from "../Utils/Hash";
+import jwt from "jsonwebtoken";
 
 const userRepo = AppDataSource.getRepository(User);
 
@@ -60,12 +60,16 @@ export const loginUser = async (data: LoginDTO) => {
   }
 
   // Compare password
-  const isMatch = await comparePassword.comparePassword(password, user.password);
+  const isMatch = await comparePassword(password, user.password);
   if (!isMatch) {
     throw new Error("Invalid email or password");
   }
 
-  // Return without password
+  // JWT Token
+  const JWT_SECRET = process.env.JWT_SECRET || "secret";
+  const token = jwt.sign({ id: user.id, email: user.email, userId: user.userId }, JWT_SECRET, { expiresIn: "1d" });
+
+  // Return user and token
   const { password: _, ...userWithoutPassword } = user;
-  return userWithoutPassword;
+  return { ...userWithoutPassword, token };
 };

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const DEMO_USERS = [
   { id: "ADMIN", password: "admin123", label: "Admin", desc: "full access (all modules)" },
@@ -278,6 +279,7 @@ const KeyIcon = () => (
 
 /* ── Main Component ──────────────────────────────────────── */
 export default function Login({ onLogin, onSwitch }) {
+  const navigate = useNavigate();
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
@@ -301,14 +303,33 @@ export default function Login({ onLogin, onSwitch }) {
     }
     setError("");
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 500));
-    const uid = userId.trim().toUpperCase();
-    if (VALID_USERS[uid] && VALID_USERS[uid] === password) {
+    try {
+      const response = await fetch("http://localhost:5000/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: userId.trim().toUpperCase(), password }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data?.message || "Invalid credentials. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      const user = data.user || {};
+      const storedUser = {
+        id: user.userId || userId.trim().toUpperCase(),
+        name: user.name || "",
+        email: user.email || "",
+        role: user.role || (userId.trim().toUpperCase() === "ADMIN" ? "ADMIN" : "CUSTOMER"),
+        token: user.token || "",
+      };
+      localStorage.setItem("pms_user", JSON.stringify(storedUser));
       setSuccess(true);
-      const role = uid === "ADMIN" ? "ADMIN" : "CUSTOMER";
-      onLogin?.(uid, role);
-    } else {
-      setError("Invalid User ID or password. Please try again.");
+      setLoading(false);
+      navigate("/dashboard");
+    } catch (err) {
+      setError("Login failed. Please try again.");
       setLoading(false);
     }
   };
