@@ -9,8 +9,46 @@ export const createCustomer = async (data: CreateCustomerDTO): Promise<Customer>
   return await repo.save(customer);
 };
 
-export const getAllCustomers = async (): Promise<Customer[]> => {
-  return await repo.find({ order: { createdAt: "DESC" } });
+export interface CustomerQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  type?: string;
+  status?: string;
+}
+
+export const getAllCustomers = async (params: CustomerQueryParams = {}): Promise<{ items: Customer[]; total: number; page: number; limit: number }> => {
+  const page = params.page && params.page > 0 ? params.page : 1;
+  const limit = params.limit && params.limit > 0 ? params.limit : 10;
+  const search = params.search?.trim();
+  const type = params.type?.trim();
+  const status = params.status?.trim();
+
+  const qb = repo.createQueryBuilder("customer");
+
+  if (search) {
+    qb.andWhere(
+      `(customer.firstName LIKE :search OR customer.lastName LIKE :search OR customer.email LIKE :search OR customer.phone LIKE :search OR customer.idProofNumber LIKE :search OR CONCAT(customer.firstName, ' ', customer.lastName) LIKE :search)`,
+      { search: `%${search}%` }
+    );
+  }
+
+  if (type && type !== "ALL") {
+    qb.andWhere("customer.type = :type", { type });
+  }
+
+  if (status && status !== "ALL") {
+    qb.andWhere("customer.status = :status", { status });
+  }
+
+  const total = await qb.getCount();
+  const items = await qb
+    .orderBy("customer.id", "ASC")
+    .skip((page - 1) * limit)
+    .take(limit)
+    .getMany();
+
+  return { items, total, page, limit };
 };
 
 export const getCustomerById = async (id: number): Promise<Customer | null> => {

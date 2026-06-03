@@ -6,19 +6,52 @@ export class Customer {
   id!: number;
 
   @Column()
-  name!: string;
+  firstName!: string;
 
-  @Column({ unique: true })
-  email!: string;
+  @Column({ nullable: true })
+  lastName?: string;
+
+  @Column({ default: "TENANT" })
+  type!: string;
+
+  @Column({ nullable: true })
+  occupation?: string;
+
+  @Column({ nullable: true })
+  gender?: string;
+
+  @Column({ type: "date", nullable: true })
+  dob?: string;
+
+  @Column({ nullable: true, type: "text" })
+  address?: string;
+
+  @Column({ nullable: true })
+  countryCode?: string;
 
   @Column({ nullable: true })
   phone?: string;
 
-  @Column({ nullable: true })
-  address?: string;
+  @Column({ nullable: true, unique: true })
+  email?: string;
 
   @Column({ nullable: true })
-  company?: string;
+  idProofType?: string;
+
+  @Column({ nullable: true })
+  idProofNumber?: string;
+
+  @Column({ nullable: true })
+  status?: string;
+
+  @Column({ nullable: true, type: "text" })
+  notes?: string;
+
+  @Column({ nullable: true })
+  createdByUserId?: number;
+
+  @Column({ nullable: true })
+  password?: string;
 
   @CreateDateColumn()
   createdAt!: Date;

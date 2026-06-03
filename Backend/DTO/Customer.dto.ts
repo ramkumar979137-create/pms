@@ -1,9 +1,19 @@
 export interface CreateCustomerDTO {
-  name: string;
-  email: string;
-  phone?: string;
+  firstName: string;
+  lastName?: string;
+  type: string;
+  occupation?: string;
+  gender?: string;
+  dob?: string;
   address?: string;
-  company?: string;
+  countryCode?: string;
+  phone?: string;
+  email?: string;
+  idProofType?: string;
+  idProofNumber?: string;
+  status?: string;
+  notes?: string;
+  password?: string;
 }
 
 export interface UpdateCustomerDTO extends Partial<CreateCustomerDTO> {}

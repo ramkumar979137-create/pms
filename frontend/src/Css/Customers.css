@@ -75,16 +75,21 @@ body {
 
 .search-icon {
   position: absolute;
-  left: 12px;
+  left: 14px;
   top: 50%;
   transform: translateY(-50%);
   color: #aaa;
-  font-size: 15px;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
 }
 
 .search-input {
   width: 100%;
-  padding: 10px 14px 10px 38px;
+  padding: 10px 14px 10px 42px;
   border: 1.5px solid #ede4d7;
   border-radius: 14px;
   font-family: 'DM Sans', sans-serif;
@@ -159,6 +164,58 @@ body {
   font-size: 12.5px;
   color: #8a8478;
   margin-bottom: 0.75rem;
+}
+
+.toast-top-right {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 1200;
+  padding: 14px 18px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  max-width: min(320px, calc(100vw - 32px));
+  box-shadow: 0 18px 40px rgba(18, 24, 31, 0.16);
+}
+
+.toast-message {
+  margin-bottom: 16px;
+}
+
+.toast-success {
+  background: #e6f5ec;
+  color: #1b662b;
+  border: 1px solid #c6e5d0;
+}
+
+.toast-error {
+  background: #fdecea;
+  color: #a32f2b;
+  border: 1px solid #f5c2bc;
+}
+
+.skeleton-table {
+  padding: 1rem 1.25rem;
+}
+
+.skeleton-row {
+  display: grid;
+  grid-template-columns: 0.9fr 1.6fr 1fr 1.1fr 1.5fr 1fr;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.skeleton-row div {
+  height: 14px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ece9e4 0%, #f5f1ec 50%, #ece9e4 100%);
+  animation: pulse 1.3s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
 }
 
 .table-wrap {
@@ -246,6 +303,16 @@ tbody td {
   border-radius: 6px;
   font-family: 'DM Sans', sans-serif;
   transition: background 0.1s, color 0.1s;
+}
+
+.action-edit,
+.action-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0;
 }
 
 .action-edit:hover {
@@ -645,6 +712,27 @@ tbody td {
 }
 
 .btn-save:active {
+  transform: scale(0.98);
+}
+
+.btn-delete-confirm {
+  padding: 0.55rem 1.4rem;
+  border: none;
+  border-radius: 8px;
+  background: #c0392b;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.btn-delete-confirm:hover {
+  background: #99281f;
+}
+
+.btn-delete-confirm:active {
   transform: scale(0.98);
 }
 

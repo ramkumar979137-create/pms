@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import Modal from '../Components/Modal';
 import '../Css/RentalAgreemnt.css';
 
 // ─── Initial Data ────────────────────────────────────────────────────────────
@@ -26,13 +27,15 @@ const fmtDate = (iso) => {
   return `${d} ${months[+m - 1]} ${y}`;
 };
 
-const addMonths = (iso, months) => {
-  const d = new Date(iso);
-  d.setMonth(d.getMonth() + Number(months));
-  d.setDate(d.getDate() - 1);
-  return d.toISOString().split('T')[0];
+const addMonths = (iso, monthsToAdd) => {
+  const [y, m, d] = iso.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  date.setMonth(date.getMonth() + Number(monthsToAdd));
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 };
-
 const nextId = (data) => {
   const nums = data.map((r) => parseInt(r.id.replace('RNT-', ''), 10));
   return 'RNT-' + String(Math.max(0, ...nums) + 1).padStart(3, '0');
@@ -66,75 +69,78 @@ function AgreementModal({ initial, onSave, onClose, title }) {
   };
 
   return (
-    <div className="ra-modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="ra-modal">
-        <div className="ra-modal-header">
-          <h2 className="ra-modal-title">{title}</h2>
-          <button className="ra-modal-close" onClick={onClose}>✕</button>
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={title}
+      size="large"
+      className="ra-modal"
+      footer={
+        <div className="ra-form-actions">
+          <button className="ra-btn-cancel" onClick={onClose}>Cancel</button>
+          <button className="ra-btn-save" onClick={handleSave}>Save Agreement</button>
         </div>
-        <div className="ra-modal-body">
-          <div className="ra-form-grid">
-            <div className="ra-form-group">
-              <label className="ra-form-label">Customer Name</label>
-              <input className="ra-form-input" value={form.customer}
-                onChange={(e) => set('customer', e.target.value)}
-                placeholder="e.g. Aarav Mehta" />
-            </div>
-
-            <div className="ra-form-group">
-              <label className="ra-form-label">Property</label>
-              <input className="ra-form-input" value={form.property}
-                onChange={(e) => set('property', e.target.value)}
-                placeholder="e.g. Skyline Towers 7A" />
-            </div>
-
-            <div className="ra-form-group">
-              <label className="ra-form-label">Start Date</label>
-              <input type="date" className="ra-form-input" value={form.start}
-                onChange={(e) => set('start', e.target.value)} />
-            </div>
-
-            <div className="ra-form-group">
-              <label className="ra-form-label">Tenure (months)</label>
-              <input type="number" className="ra-form-input" value={form.tenure} min={1}
-                onChange={(e) => set('tenure', e.target.value)} />
-            </div>
-
-            <div className="ra-form-group">
-              <label className="ra-form-label">Monthly Rent (₹)</label>
-              <input type="number" className="ra-form-input" value={form.monthly}
-                onChange={(e) => set('monthly', e.target.value)}
-                placeholder="22000" />
-            </div>
-
-            <div className="ra-form-group">
-              <label className="ra-form-label">Advance (₹)</label>
-              <input type="number" className="ra-form-input" value={form.advance}
-                onChange={(e) => set('advance', e.target.value)}
-                placeholder="44000" />
-            </div>
-
-            <div className="ra-form-group">
-              <label className="ra-form-label">Status</label>
-              <select className="ra-form-select" value={form.status}
-                onChange={(e) => set('status', e.target.value)}>
-                <option value="ACTIVE">Active</option>
-                <option value="PENDING">Pending</option>
-                <option value="EXPIRED">Expired</option>
-              </select>
-            </div>
+      }
+    >
+      <div className="ra-modal-body">
+        <div className="ra-form-grid">
+          <div className="ra-form-group">
+            <label className="ra-form-label">Customer Name</label>
+            <input className="ra-form-input" value={form.customer}
+              onChange={(e) => set('customer', e.target.value)}
+              placeholder="e.g. Aarav Mehta" />
           </div>
 
-          <div className="ra-form-actions">
-            <button className="ra-btn-cancel" onClick={onClose}>Cancel</button>
-            <button className="ra-btn-save" onClick={handleSave}>Save Agreement</button>
+          <div className="ra-form-group">
+            <label className="ra-form-label">Property</label>
+            <input className="ra-form-input" value={form.property}
+              onChange={(e) => set('property', e.target.value)}
+              placeholder="e.g. Skyline Towers 7A" />
+          </div>
+
+          <div className="ra-form-group">
+            <label className="ra-form-label">Start Date</label>
+            <input type="date" className="ra-form-input" value={form.start}
+              onChange={(e) => set('start', e.target.value)} />
+          </div>
+
+          <div className="ra-form-group">
+            <label className="ra-form-label">Tenure (months)</label>
+            <input type="number" className="ra-form-input" value={form.tenure} min={1}
+              onChange={(e) => set('tenure', e.target.value)} />
+          </div>
+
+          <div className="ra-form-group">
+            <label className="ra-form-label">Monthly Rent (₹)</label>
+            <input type="number" className="ra-form-input" value={form.monthly}
+              onChange={(e) => set('monthly', e.target.value)}
+              placeholder="22000" />
+          </div>
+
+          <div className="ra-form-group">
+            <label className="ra-form-label">Advance (₹)</label>
+            <input type="number" className="ra-form-input" value={form.advance}
+              onChange={(e) => set('advance', e.target.value)}
+              placeholder="44000" />
+          </div>
+
+          <div className="ra-form-group">
+            <label className="ra-form-label">Status</label>
+            <select className="ra-form-select" value={form.status}
+              onChange={(e) => set('status', e.target.value)}>
+              <option value="ACTIVE">Active</option>
+              <option value="PENDING">Pending</option>
+              <option value="EXPIRED">Expired</option>
+            </select>
           </div>
         </div>
+
       </div>
-    </div>
+    </Modal>
   );
 }
 
+// ─── AgreementRow ─────────────────────────────────────────────────────────────
 // ─── AgreementRow ─────────────────────────────────────────────────────────────
 function AgreementRow({ record, onEdit, onDelete }) {
   return (
@@ -149,12 +155,9 @@ function AgreementRow({ record, onEdit, onDelete }) {
       <td className="ra-amount">{fmt(record.advance)}</td>
       <td><StatusBadge status={record.status} /></td>
       <td>
-        <div className="ra-actions">
+        <div className="ra-actions-cell">
           <button className="ra-btn-edit" onClick={() => onEdit(record)}>Edit</button>
-          <button className="ra-btn-pdf" onClick={() => alert('Generating PDF for ' + record.id)}>
-            📄 PDF
-          </button>
-          <button className="ra-btn-delete" onClick={() => onDelete(record.id)}>✕</button>
+          <button className="ra-btn-delete" onClick={() => onDelete(record.id)}>Delete</button>
         </div>
       </td>
     </tr>

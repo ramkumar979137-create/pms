@@ -1,5 +1,6 @@
 // Pages/Vendors.jsx
 import { useState } from "react";
+import Modal from "../Components/Modal";
 import "../Css/Global.css";
 import "../Css/Vendors.css";
 
@@ -64,19 +65,26 @@ export default function Vendors() {
        
 
         {showForm && (
-          <div className="vendors-modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowForm(false)}>
-            <div className="vendors-modal-box">
-              <div className="vendors-modal-header">
-                <div>
-                  <div className="vendors-modal-title">New Vendor</div>
-                  <p className="vendors-modal-subtitle">Fill in vendor details for invoice and service tracking.</p>
-                </div>
-                <button className="vendors-modal-close" type="button" onClick={() => setShowForm(false)}>
-                  ×
+          <Modal
+            isOpen={true}
+            onClose={() => setShowForm(false)}
+            title="New Vendor"
+            size="large"
+            className="vendors-modal-box"
+            footer={
+              <div className="vendors-modal-actions">
+                <button className="vendors-btn secondary" type="button" onClick={() => setShowForm(false)}>
+                  Cancel
+                </button>
+                <button className="vendors-btn primary" type="submit" form="vendor-form">
+                  <i className="bi bi-check-lg"></i> Save Vendor
                 </button>
               </div>
-              <form className="vendors-modal-form" onSubmit={handleAdd}>
-                <div className="vendors-modal-grid">
+            }
+          >
+            <p className="vendors-modal-subtitle">Fill in vendor details for invoice and service tracking.</p>
+            <form id="vendor-form" className="vendors-modal-form" onSubmit={handleAdd}>
+              <div className="vendors-modal-grid">
                   <label>
                     Vendor Name <span>*</span>
                     <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
@@ -93,15 +101,15 @@ export default function Vendors() {
                   </label>
                   <label>
                     Contact Person
-                    <input value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} />
+                    <input placeholder="Contact person" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} />
                   </label>
                   <label>
                     Phone
-                    <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                    <input placeholder="Phone number" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
                   </label>
                   <label>
                     City
-                    <input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+                    <input placeholder="City" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
                   </label>
                   <label>
                     Initial Rating
@@ -128,8 +136,7 @@ export default function Vendors() {
                   </button>
                 </div>
               </form>
-            </div>
-          </div>
+                </Modal>
         )}
 
         <div className="vendors-table-card">

@@ -9,22 +9,40 @@ export class Property {
   name!: string;
 
   @Column()
-  type!: string; // Residential, Commercial, Villa, etc.
+  type!: string; // APARTMENT, VILLA, HOUSE, COMMERCIAL, PLOT
 
-  @Column({ type: "int", nullable: true })
-  units?: number;
-
-  @Column({ nullable: true })
-  city?: string;
+  @Column()
+  address!: string;
 
   @Column({ nullable: true })
-  address?: string;
+  occupancy?: string; // Owned, Leased, Rented
 
   @Column({ nullable: true })
   owner?: string;
 
-  @Column({ default: "Vacant" })
-  status!: string; // Occupied, Partial, Vacant
+  @Column({ default: "VACANT" })
+  status!: string; // OCCUPIED, VACANT
+
+  @Column({ nullable: true })
+  purchasedOn?: string;
+
+  @Column({ type: "decimal", precision: 12, scale: 2, nullable: true })
+  purchaseValue?: number;
+
+  @Column({ default: "INR" })
+  currency!: string; // INR, USD
+
+  @Column({ nullable: true })
+  maintenancePhone?: string;
+
+  @Column({ nullable: true })
+  maintenanceEmail?: string;
+
+  @Column({ type: "text", nullable: true })
+  notes?: string;
+
+  @Column({ type: "int", nullable: true })
+  createdByUserId?: number;
 
   @CreateDateColumn()
   createdAt!: Date;

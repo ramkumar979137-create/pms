@@ -4,13 +4,16 @@ import { getAllCustomers } from "../Service/Customer.service";
 
 export const getDashboard = async (_req: Request, res: Response) => {
   try {
-    const properties = await getAllProperties();
-    const customers = await getAllCustomers();
+    const propertiesResult = await getAllProperties({ page: 1, limit: 100, search: "", type: "", status: "" });
+    const customersResult = await getAllCustomers({ page: 1, limit: 100, search: "", type: "", status: "" });
+
+    const properties = propertiesResult.items || [];
+    const customers = customersResult.items || [];
 
     // Calculate stats
-    const totalProperties = properties.length;
-    const occupiedProperties = properties.filter(p => p.status === "Occupied").length;
-    const activeTenants = customers.length;
+    const totalProperties = propertiesResult.total || 0;
+    const occupiedProperties = properties.filter((p: any) => p.status === "OCCUPIED").length;
+    const activeTenants = customersResult.total || 0;
     const openMaintenance = 0;
     const pendingInvoices = "₹0";
 
