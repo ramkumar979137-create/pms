@@ -1,5 +1,7 @@
 // Components/Header.jsx
+import { useState } from "react";
 import "../Css/Header.css";
+import Logo from "../Assets/AUM_Sol_Corp_symbol_with_bg.png";    
 
 const SearchIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -17,21 +19,36 @@ const SignOutIcon = () => (
 );
 
 export default function Header({ onMenuClick, user = {} }) {
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const handleSignOut = () => {
+    setShowConfirm(true);
+  };
+
+  const confirmSignOut = () => {
+    // Clear user data from localStorage
+    localStorage.removeItem("pms_user");
+    localStorage.removeItem("pms_token");
+    // Redirect to login page
+    window.location.href = "/login";
+  };
+
+  const cancelSignOut = () => {
+    setShowConfirm(false);
+  };
+
   return (
     <header className="pms-header">
       {/* Brand / Logo — same width as sidebar */}
       <div className="header-brand">
-        <div className="header-brand-logo">A</div>
+        <div className="header-brand-logo">
+          <img src={Logo} alt="AUM Sol Corp Logo" />
+        </div>  
         <div className="header-brand-text">
-          <span className="header-brand-name">AUM Sol Corp</span>
-          <span className="header-brand-tag">A Unite for Multiple Solutions</span>
+          <h1 className="header-brand-name">AUM Sol Corp</h1>
+          <small className="header-brand-tag">A Unite for Multiple Solutions</small>
         </div>
       </div>
-
-      {/* Mobile hamburger */}
-      <button className="header-hamburger" onClick={onMenuClick} aria-label="Open menu">
-        ☰
-      </button>
 
       {/* Search */}
       <div className="header-search">
@@ -51,10 +68,29 @@ export default function Header({ onMenuClick, user = {} }) {
         <div className="header-avatar">
           {(user.name?.[0] || "A").toUpperCase()}
         </div>
-        <button className="header-signout">
+        <button className="header-signout" onClick={handleSignOut}>
           <SignOutIcon /> Sign Out
         </button>
       </div>
+
+      {/* Mobile hamburger — appears last */}
+      <button className="header-hamburger" onClick={onMenuClick} aria-label="Open menu">
+        ☰
+      </button>
+
+      {/* Sign Out Confirmation Dialog */}
+      {showConfirm && (
+        <div className="confirmation-overlay">
+          <div className="confirmation-dialog">
+            <h2>Confirm Sign Out</h2>
+            <p>Are you sure you want to sign out?</p>
+            <div className="confirmation-buttons">
+              <button className="btn-cancel" onClick={cancelSignOut}>Cancel</button>
+              <button className="btn-confirm" onClick={confirmSignOut}>Sign Out</button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
