@@ -347,7 +347,11 @@ export default function Properties() {
   };
 
   useEffect(() => {
-    loadProperties(1);
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    } else {
+      loadProperties(1);
+    }
   }, [search, typeFilter, statusFilter]);
 
   useEffect(() => {

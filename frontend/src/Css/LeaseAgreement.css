@@ -5,6 +5,142 @@
   color: var(--ink, #131820);
 }
 
+.lease-modal {
+  border-radius: 28px;
+  overflow: hidden;
+}
+
+.lease-modal .MuiDialogTitle-root {
+  padding: 28px 30px 20px;
+  background: #ffffff;
+  border-bottom: 1px solid rgba(88, 75, 53, 0.12);
+}
+
+.lease-modal .MuiDialogContent-root {
+  padding: 28px 30px 24px;
+  background: #ffffff;
+}
+
+.lease-modal .MuiDialogActions-root {
+  padding: 20px 30px;
+  border-top: 1px solid rgba(88, 75, 53, 0.12);
+  background: #ffffff;
+}
+
+.lease-modal .form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.lease-modal .lease-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.lease-modal .split-input {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.lease-modal .split-input select {
+  width: 130px;
+  min-width: 130px;
+  border-radius: 16px;
+}
+
+.lease-modal .split-input input {
+  flex: 1;
+}
+
+.lease-modal .pet-toggle {
+  display: flex;
+  gap: 0.75rem;
+  background: #fbf7ee;
+  border: 1px solid rgba(88, 75, 53, 0.14);
+  border-radius: 18px;
+  padding: 6px;
+}
+
+.lease-modal .pet-toggle button {
+  flex: 1;
+  border: 1px solid transparent;
+  background: #ffffff;
+  color: #49515f;
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.lease-modal .pet-toggle button.active {
+  background: #c8a961;
+  border-color: #c8a961;
+  color: #14233d;
+}
+
+@media (max-width: 1100px) {
+  .lease-modal .lease-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 780px) {
+  .lease-modal .lease-grid-4 {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+.lease-modal .field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.lease-modal .field-group label {
+  color: #4b5362;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.lease-modal .field-group input,
+.lease-modal .field-group select,
+.lease-modal .field-group textarea {
+  width: 100%;
+  border: 1px solid rgba(88, 75, 53, 0.14);
+  border-radius: 16px;
+  background: #fcfaf7;
+  padding: 0.95rem 1rem;
+  font-size: 0.95rem;
+  color: #1f2732;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.lease-modal .field-group input:focus,
+.lease-modal .field-group select:focus,
+.lease-modal .field-group textarea:focus {
+  border-color: #c8a961;
+  box-shadow: 0 0 0 4px rgba(200, 169, 97, 0.12);
+  background: #ffffff;
+}
+
+.lease-modal .form-full {
+  grid-column: 1 / -1;
+}
+
+.lease-modal .field-group.form-full {
+  grid-column: 1 / -1;
+}
+
+.lease-modal .field-group label > span {
+  font-weight: 500;
+}
+
 .lease-page-header {
   margin-bottom: 28px;
 }

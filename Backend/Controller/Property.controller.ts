@@ -12,7 +12,7 @@ export const create = async (req: Request, res: Response) => {
   try {
     const propertyData = {
       ...req.body,
-      createdByUserId: (req as any).userId,
+      createdByUserId: (req as any).userId || null,
     };
     const property = await createProperty(propertyData);
     res.status(201).json(property);

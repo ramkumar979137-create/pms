@@ -1,5 +1,6 @@
 // Pages/LeaseAgreement.jsx
 import { useState, useEffect, useRef } from "react";
+import Modal from "../Components/Modal";
 import axios from "axios";
 import "../Css/Global.css";
 import "../Css/LeaseAgreement.css";
@@ -7,8 +8,24 @@ import "../Css/LeaseAgreement.css";
 const API = "http://localhost:5000/api/lease-agreements";
 const leaseTermOptions = ["6", "12", "24", "36"];
 const paymentOptions = ["Bank Transfer", "UPI", "Cash", "Cheque"];
+const allCustomers = [
+  { id: "cust-1", name: "Priya Sharma", userId: 1 },
+  { id: "cust-2", name: "Arjun Menon", userId: 1 },
+  { id: "cust-3", name: "Sneha Patel", userId: 2 },
+  { id: "cust-4", name: "Mohammed Hassan", userId: 2 },
+];
+const allProperties = [
+  { id: "prop-1", name: "Lotus Residency", address: "12 KK Nagar, Madurai", userId: 1 },
+  { id: "prop-2", name: "Skyline Towers", address: "88 OMR, Chennai", userId: 1 },
+  { id: "prop-3", name: "Green Villa", address: "4 Whitefield, Bengaluru", userId: 2 },
+  { id: "prop-4", name: "Downtown Plaza", address: "50 MG Road, Bengaluru", userId: 2 },
+];
+const currencyOptions = ["₹ INR", "$ USD", "€ EUR"];
 const statusColor = { Active: "success", Expired: "danger", Terminated: "danger", "Renewal Pending": "warning" };
 const emptyForm = {
+  leaseId: "",
+  customer: "",
+  customerName: "",
   tenant: "",
   landlord: "",
   property: "",
@@ -24,12 +41,21 @@ const emptyForm = {
   utilityCharge: "",
   rentDueDay: "1",
   paymentMode: "Bank Transfer",
+  leaseValueCurrency: "₹ INR",
+  leaseValueAmount: "",
+  advanceCurrency: "₹ INR",
+  advanceAmount: "",
+  paymentDate: "",
+  exceptionDate: "",
+  delayPenaltyCurrency: "₹ INR",
+  delayPenaltyAmount: "",
   increasePercentage: "",
   terms: "",
   notes: "",
   autoRenewal: false,
   status: "Active",
   userId: 1,
+  petsAllowed: false,
 };
 
 function fileIcon(name = "") {
@@ -53,6 +79,15 @@ function DocChip({ name, onRemove }) {
       )}
     </div>
   );
+}
+function calculateTenure(startDate, endDate) {
+  if (!startDate || !endDate) return "";
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "";
+  const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+  if (months <= 0) return "";
+  return `${months} month${months === 1 ? "" : "s"}`;
 }
 const SAMPLE_LEASES = [
   {
@@ -184,8 +219,28 @@ export default function LeaseAgreement() {
   const [dragOver, setDragOver] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const fileRef = useRef();
+  const currentUserId = Number(JSON.parse(localStorage.getItem("pms_user") || "{}")?.id || 1);
+  const currentCustomers = allCustomers.filter(c => c.userId === currentUserId);
+  const currentProperties = allProperties.filter(p => p.userId === currentUserId);
+  const handleCustomerSelect = (customerName) => {
+    const customer = allCustomers.find(c => c.name === customerName);
+    setForm(prev => ({
+      ...prev,
+      customer: customer?.name || "",
+      customerName: customer?.name || (customerName === "" ? "" : prev.customerName),
+    }));
+  };
+  const handlePropertySelect = (propertyId) => {
+    const property = allProperties.find(p => p.name === propertyId);
+    setForm(prev => ({
+      ...prev,
+      property: property?.name || "",
+      propertyUnit: property?.name || prev.propertyUnit,
+      propertyAddress: property?.address || prev.propertyAddress,
+    }));
+  };
+  const tenure = calculateTenure(form.startDate, form.endDate);
 
-  /* ── Fetch Leases ── */
   const fetchLeases = async () => {
     setLoading(true);
     try {
@@ -202,18 +257,19 @@ export default function LeaseAgreement() {
     }
   };
 
-  useEffect(() => { fetchLeases(); }, [filter]);
+  useEffect(() => {
+    fetchLeases();
+  }, [filter]);
 
-  /* ── File helpers ── */
   const addFiles = (list) => {
     const arr = Array.from(list);
     const unique = arr.filter(f => !files.find(x => x.name === f.name));
     setFiles(p => [...p, ...unique]);
   };
+
   const removeFile = (name) => setFiles(p => p.filter(f => f.name !== name));
   const handleDrop = (e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); };
 
-  /* ── Submit (Create/Update) ── */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -244,9 +300,11 @@ export default function LeaseAgreement() {
     }
   };
 
-  /* ── Edit Lease ── */
   const handleEdit = (lease) => {
     setForm({
+      leaseId: lease.leaseId || "",
+      customer: lease.customer || "",
+      customerName: lease.customerName || "",
       tenant: lease.tenant || "",
       landlord: lease.landlord || "",
       property: lease.property || "",
@@ -262,11 +320,20 @@ export default function LeaseAgreement() {
       utilityCharge: lease.utilityCharge || "",
       rentDueDay: lease.rentDueDay || "1",
       paymentMode: lease.paymentMode || "Bank Transfer",
+      leaseValueCurrency: lease.leaseValueCurrency || "₹ INR",
+      leaseValueAmount: lease.leaseValueAmount || "",
+      advanceCurrency: lease.advanceCurrency || "₹ INR",
+      advanceAmount: lease.advanceAmount || "",
+      paymentDate: lease.paymentDate || "",
+      exceptionDate: lease.exceptionDate || "",
+      delayPenaltyCurrency: lease.delayPenaltyCurrency || "₹ INR",
+      delayPenaltyAmount: lease.delayPenaltyAmount || "",
       increasePercentage: lease.increasePercentage || "",
       terms: lease.terms || "",
       notes: lease.notes || "",
       autoRenewal: lease.autoRenewal || false,
       status: lease.status || "Active",
+      petsAllowed: typeof lease.petsAllowed === "boolean" ? lease.petsAllowed : false,
       userId: lease.userId || 1,
     });
     setEditingId(lease.id);
@@ -338,107 +405,216 @@ export default function LeaseAgreement() {
         </div>
       )}
 
-      {/* ══ Form ══ */}
+      {/* ══ Form Dialog ══ */}
       {showForm && (
-        <div className="pms-card" style={{ marginBottom: "1.25rem" }}>
-          <h3 style={{ fontSize: "1rem", marginBottom: "1.25rem" }}>
-            {editingId ? "Edit Lease Agreement" : "New Lease Agreement"}
-          </h3>
-          <form onSubmit={handleSubmit}>
-            <div className="form-grid" style={{ marginBottom: "1rem" }}>
+        <Modal
+          isOpen={showForm}
+          onClose={() => { setShow(false); setForm(emptyForm); setFiles([]); setEditingId(null); }}
+          title={editingId ? "Edit Lease Agreement" : "New Lease Agreement"}
+          size="large"
+          className="lease-modal"
+          footer={
+            <>
+              <button className="btn-pms secondary" type="button" onClick={() => { setShow(false); setForm(emptyForm); setFiles([]); setEditingId(null); }}>
+                Cancel
+              </button>
+              <button className="btn-pms primary" type="submit" form="lease-form" disabled={saving}>
+                {saving ? <>Saving...</> : <>{editingId ? "Update Lease" : "Save Lease"}</>}
+              </button>
+            </>
+          }
+        >
+          <form id="lease-form" onSubmit={handleSubmit}>
+            <div className="form-section">
+              <div className="form-section-title">Customer & Property</div>
+              <div className="lease-grid-4">
+                <div className="field-group">
+                  <label>Lease ID</label>
+                  <input value={form.leaseId} onChange={e => setForm({ ...form, leaseId: e.target.value })} placeholder="LSE-007" />
+                </div>
+                <div className="field-group">
+                  <label>Status</label>
+                  <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+                    <option>Active</option>
+                    <option>Expired</option>
+                    <option>Terminated</option>
+                    <option>Renewal Pending</option>
+                  </select>
+                </div>
+                <div className="field-group">
+                  <label>Customer *</label>
+                  <select value={form.customer} onChange={e => handleCustomerSelect(e.target.value)}>
+                    <option value="">— Select Customer —</option>
+                    {currentCustomers.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div className="field-group">
+                  <label>Customer Name</label>
+                  <input value={form.customerName} onChange={e => setForm({ ...form, customerName: e.target.value })} placeholder="Customer name" />
+                </div>
+              </div>
+              <div className="lease-grid-4">
+                <div className="field-group">
+                  <label>Property *</label>
+                  <select value={form.property} onChange={e => handlePropertySelect(e.target.value)}>
+                    <option value="">— Select Property —</option>
+                    {currentProperties.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                  </select>
+                </div>
+                <div className="field-group">
+                  <label>Property Name</label>
+                  <input value={form.propertyUnit} onChange={e => setForm({ ...form, propertyUnit: e.target.value })} placeholder="Property name" />
+                </div>
+                <div className="field-group form-full">
+                  <label>Property Address</label>
+                  <textarea value={form.propertyAddress} onChange={e => setForm({ ...form, propertyAddress: e.target.value })} placeholder="Full property address" />
+                </div>
+              </div>
+            </div>
 
+            <div className="form-section">
+              <div className="form-section-title">Lease Duration</div>
+              <div className="lease-grid-4">
+                <div className="field-group">
+                  <label>Start Date *</label>
+                  <input required type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
+                </div>
+                <div className="field-group">
+                  <label>End Date *</label>
+                  <input required type="date" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} />
+                </div>
+                <div className="field-group form-full">
+                  <label>Tenure (auto-calculated)</label>
+                  <input readOnly value={tenure} placeholder="Auto-calculated from dates" />
+                </div>
+              </div>
+            </div>
+
+            <div className="form-section">
+              <div className="form-section-title">Financial Details</div>
+              <div className="lease-grid-4">
+                <div className="field-group">
+                  <label>Lease Value *</label>
+                  <div className="split-input">
+                    <select value={form.leaseValueCurrency} onChange={e => setForm({ ...form, leaseValueCurrency: e.target.value })}>
+                      {currencyOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <input type="number" value={form.leaseValueAmount} onChange={e => setForm({ ...form, leaseValueAmount: e.target.value })} placeholder="0.00" />
+                  </div>
+                </div>
+                <div className="field-group">
+                  <label>Advance Amount</label>
+                  <div className="split-input">
+                    <select value={form.advanceCurrency} onChange={e => setForm({ ...form, advanceCurrency: e.target.value })}>
+                      {currencyOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <input type="number" value={form.advanceAmount} onChange={e => setForm({ ...form, advanceAmount: e.target.value })} placeholder="0.00" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="form-section">
+              <div className="form-section-title">Payment & Penalty</div>
+              <div className="lease-grid-4">
+                <div className="field-group">
+                  <label>Payment Date</label>
+                  <input type="date" value={form.paymentDate} onChange={e => setForm({ ...form, paymentDate: e.target.value })} />
+                </div>
+                <div className="field-group">
+                  <label>Exception Date</label>
+                  <input type="date" value={form.exceptionDate} onChange={e => setForm({ ...form, exceptionDate: e.target.value })} />
+                </div>
+                <div className="field-group form-full">
+                  <label>Delay Penalty</label>
+                  <div className="split-input">
+                    <select value={form.delayPenaltyCurrency} onChange={e => setForm({ ...form, delayPenaltyCurrency: e.target.value })}>
+                      {currencyOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <input type="number" value={form.delayPenaltyAmount} onChange={e => setForm({ ...form, delayPenaltyAmount: e.target.value })} placeholder="0.00" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="form-section">
+              <div className="form-section-title">Pet Policy</div>
               <div className="field-group">
-                <label>Tenant Name *</label>
-                <input required value={form.tenant} onChange={e => setForm({ ...form, tenant: e.target.value })} placeholder="Priya Sharma" />
+                <label>Pets Allowed</label>
+                <div className="pet-toggle">
+                  <button type="button" className={form.petsAllowed ? "active" : ""} onClick={() => setForm({ ...form, petsAllowed: true })}>Yes</button>
+                  <button type="button" className={!form.petsAllowed ? "active" : ""} onClick={() => setForm({ ...form, petsAllowed: false })}>No</button>
+                </div>
               </div>
-              <div className="field-group">
-                <label>Landlord Name *</label>
-                <input required value={form.landlord} onChange={e => setForm({ ...form, landlord: e.target.value })} placeholder="John Doe" />
-              </div>
-              <div className="field-group">
-                <label>Property Name *</label>
-                <input required value={form.property} onChange={e => setForm({ ...form, property: e.target.value })} placeholder="Sunrise Apt 2A" />
-              </div>
-              <div className="field-group">
-                <label>Unit No</label>
-                <input value={form.propertyUnit} onChange={e => setForm({ ...form, propertyUnit: e.target.value })} placeholder="2A" />
-              </div>
-              <div className="field-group">
-                <label>Property Type</label>
-                <select value={form.propertyType} onChange={e => setForm({ ...form, propertyType: e.target.value })}>
-                  {["Residential", "Commercial", "Villa", "Hotel", "Hostel"].map(t => <option key={t}>{t}</option>)}
-                </select>
-              </div>
-              <div className="field-group">
-                <label>Property Address</label>
-                <input value={form.propertyAddress} onChange={e => setForm({ ...form, propertyAddress: e.target.value })} placeholder="Full address" />
-              </div>
-              <div className="field-group">
-                <label>Start Date *</label>
-                <input required type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
-              </div>
-              <div className="field-group">
-                <label>End Date *</label>
-                <input required type="date" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} />
-              </div>
-              <div className="field-group">
-                <label>Lease Term (months)</label>
-                <select value={form.leaseTerm} onChange={e => setForm({ ...form, leaseTerm: e.target.value })}>
-                  {leaseTermOptions.map(t => <option key={t}>{t}</option>)}
-                </select>
-              </div>
-              <div className="field-group">
-                <label>Monthly Rent (₹) *</label>
-                <input required type="number" value={form.monthlyRent} onChange={e => setForm({ ...form, monthlyRent: e.target.value })} placeholder="18000" />
-              </div>
-              <div className="field-group">
-                <label>Security Deposit (₹)</label>
-                <input type="number" value={form.securityDeposit} onChange={e => setForm({ ...form, securityDeposit: e.target.value })} placeholder="36000" />
-              </div>
-              <div className="field-group">
-                <label>Maintenance Charge (₹)</label>
-                <input type="number" value={form.maintenanceCharge} onChange={e => setForm({ ...form, maintenanceCharge: e.target.value })} placeholder="500" />
-              </div>
-              <div className="field-group">
-                <label>Utility Charge (₹)</label>
-                <input type="number" value={form.utilityCharge} onChange={e => setForm({ ...form, utilityCharge: e.target.value })} placeholder="200" />
-              </div>
-              <div className="field-group">
-                <label>Rent Due Day (1–28)</label>
-                <input type="number" min="1" max="28" value={form.rentDueDay} onChange={e => setForm({ ...form, rentDueDay: e.target.value })} />
-              </div>
-              <div className="field-group">
-                <label>Payment Mode</label>
-                <select value={form.paymentMode} onChange={e => setForm({ ...form, paymentMode: e.target.value })}>
-                  {paymentOptions.map(p => <option key={p}>{p}</option>)}
-                </select>
-              </div>
-              <div className="field-group">
-                <label>Annual Rent Increase (%)</label>
-                <input type="number" value={form.increasePercentage} onChange={e => setForm({ ...form, increasePercentage: e.target.value })} placeholder="5" />
-              </div>
-              <div className="field-group">
-                <label>Status</label>
-                <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
-                  <option>Active</option>
-                  <option>Expired</option>
-                  <option>Terminated</option>
-                  <option>Renewal Pending</option>
-                </select>
-              </div>
-              <div className="field-group" style={{ justifyContent: "flex-end" }}>
-                <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", marginTop: "1.5rem" }}>
-                  <input type="checkbox" checked={form.autoRenewal} onChange={e => setForm({ ...form, autoRenewal: e.target.checked })} />
-                  Auto Renewal
-                </label>
-              </div>
-              <div className="field-group form-full">
-                <label>Terms & Conditions</label>
-                <textarea value={form.terms} onChange={e => setForm({ ...form, terms: e.target.value })} placeholder="Lease terms..." />
-              </div>
-              <div className="field-group form-full">
-                <label>Notes / Remarks</label>
-                <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Internal remarks..." />
+            </div>
+
+            <div className="form-section">
+              <div className="form-section-title">Agreement Details</div>
+              <div className="form-grid" style={{ marginBottom: "1rem" }}>
+                <div className="field-group">
+                  <label>Tenant Name *</label>
+                  <input required value={form.tenant} onChange={e => setForm({ ...form, tenant: e.target.value })} placeholder="Priya Sharma" />
+                </div>
+                <div className="field-group">
+                  <label>Landlord Name *</label>
+                  <input required value={form.landlord} onChange={e => setForm({ ...form, landlord: e.target.value })} placeholder="John Doe" />
+                </div>
+                <div className="field-group">
+                  <label>Property Type</label>
+                  <select value={form.propertyType} onChange={e => setForm({ ...form, propertyType: e.target.value })}>
+                    {["Residential", "Commercial", "Villa", "Hotel", "Hostel"].map(t => <option key={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div className="field-group">
+                  <label>Lease Term (months)</label>
+                  <select value={form.leaseTerm} onChange={e => setForm({ ...form, leaseTerm: e.target.value })}>
+                    {leaseTermOptions.map(t => <option key={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div className="field-group">
+                  <label>Monthly Rent (₹) *</label>
+                  <input required type="number" value={form.monthlyRent} onChange={e => setForm({ ...form, monthlyRent: e.target.value })} placeholder="18000" />
+                </div>
+                <div className="field-group">
+                  <label>Security Deposit (₹)</label>
+                  <input type="number" value={form.securityDeposit} onChange={e => setForm({ ...form, securityDeposit: e.target.value })} placeholder="36000" />
+                </div>
+                <div className="field-group">
+                  <label>Maintenance Charge (₹)</label>
+                  <input type="number" value={form.maintenanceCharge} onChange={e => setForm({ ...form, maintenanceCharge: e.target.value })} placeholder="500" />
+                </div>
+                <div className="field-group">
+                  <label>Utility Charge (₹)</label>
+                  <input type="number" value={form.utilityCharge} onChange={e => setForm({ ...form, utilityCharge: e.target.value })} placeholder="200" />
+                </div>
+                <div className="field-group">
+                  <label>Rent Due Day (1–28)</label>
+                  <input type="number" min="1" max="28" value={form.rentDueDay} onChange={e => setForm({ ...form, rentDueDay: e.target.value })} />
+                </div>
+                <div className="field-group">
+                  <label>Payment Mode</label>
+                  <select value={form.paymentMode} onChange={e => setForm({ ...form, paymentMode: e.target.value })}>
+                    {paymentOptions.map(p => <option key={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div className="field-group">
+                  <label>Annual Rent Increase (%)</label>
+                  <input type="number" value={form.increasePercentage} onChange={e => setForm({ ...form, increasePercentage: e.target.value })} placeholder="5" />
+                </div>
+                <div className="field-group" style={{ justifyContent: "flex-end" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", marginTop: "1.5rem" }}>
+                    <input type="checkbox" checked={form.autoRenewal} onChange={e => setForm({ ...form, autoRenewal: e.target.checked })} />
+                    Auto Renewal
+                  </label>
+                </div>
+                <div className="field-group form-full">
+                  <label>Terms & Conditions</label>
+                  <textarea value={form.terms} onChange={e => setForm({ ...form, terms: e.target.value })} placeholder="Lease terms..." />
+                </div>
+                <div className="field-group form-full">
+                  <label>Notes / Remarks</label>
+                  <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Internal remarks..." />
+                </div>
               </div>
             </div>
 
@@ -451,7 +627,6 @@ export default function LeaseAgreement() {
                   Lease deed, ID proof, NOC, photos…
                 </span>
               </label>
-
               <div
                 onDragOver={e => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
@@ -473,10 +648,7 @@ export default function LeaseAgreement() {
                   PDF, JPG, PNG, DOC, DOCX — Max 10MB each
                 </div>
               </div>
-
-              <input ref={fileRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                style={{ display: "none" }} onChange={e => { addFiles(e.target.files); e.target.value = ""; }} />
-
+              <input ref={fileRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style={{ display: "none" }} onChange={e => { addFiles(e.target.files); e.target.value = ""; }} />
               {files.length > 0 ? (
                 <div>
                   <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginBottom: "0.4rem" }}>
@@ -490,21 +662,8 @@ export default function LeaseAgreement() {
                 <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", textAlign: "center" }}>No files selected</div>
               )}
             </div>
-
-            {/* Actions */}
-            <div style={{ display: "flex", gap: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid var(--border)" }}>
-              <button className="btn-pms primary" type="submit" disabled={saving}>
-                {saving
-                  ? <><span className="spinner-border spinner-border-sm me-2"></span>Saving...</>
-                  : <><i className="bi bi-check-lg"></i> {editingId ? "Update" : "Save"} Lease</>}
-              </button>
-              <button className="btn-pms secondary" type="button"
-                onClick={() => { setShow(false); setForm(emptyForm); setFiles([]); setEditingId(null); }}>
-                Cancel
-              </button>
-            </div>
           </form>
-        </div>
+        </Modal>
       )}
 
       {/* ══ Table ══ */}

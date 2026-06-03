@@ -310,6 +310,38 @@
   margin-top: 0.5rem;
 }
 
+.preferred-toggle-section {
+  grid-column: 1 / -1;
+}
+
+.preferred-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.preferred-toggle button {
+  width: 100%;
+  border: 1px solid #dcd4c7;
+  border-radius: 14px;
+  padding: 0.95rem 1rem;
+  font-size: 0.95rem;
+  background: #fff;
+  color: #2c2c2c;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.preferred-toggle button.active {
+  background: #0c1e31;
+  color: #fff;
+  border-color: #0c1e31;
+}
+
+.preferred-toggle button:hover {
+  border-color: #c9a961;
+}
+
 .vendors-form-header {
   display: flex;
   justify-content: space-between;
