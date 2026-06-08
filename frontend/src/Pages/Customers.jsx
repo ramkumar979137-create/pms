@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
@@ -54,6 +54,7 @@ function CustomerTableSkeleton({ rows = 5 }) {
 function NewCustomerModal({ initial = null, onClose, onSave }) {
   const [form, setForm] = useState(initial || EMPTY_FORM);
   const [fileNames, setFileNames] = useState([]);
+  const [files, setFiles] = useState([]);
   const [validationError, setValidationError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -80,6 +81,7 @@ function NewCustomerModal({ initial = null, onClose, onSave }) {
     } else {
       setForm(EMPTY_FORM);
       setFileNames([]);
+        setFiles([]);
     }
   }, [initial]);
 
@@ -88,6 +90,7 @@ function NewCustomerModal({ initial = null, onClose, onSave }) {
   const handleFile = (e) => {
     const files = Array.from(e.target.files || []);
     setFileNames(files.map((f) => f.name));
+    setFiles(files);
   };
 
   const handleSubmit = async () => {
@@ -116,7 +119,7 @@ function NewCustomerModal({ initial = null, onClose, onSave }) {
     };
 
     try {
-      await onSave(payload, initial?.id);
+      await onSave(payload, initial?.id, files);
       onClose();
     } catch (err) {
       setValidationError(err instanceof Error ? err.message : "Unable to save customer.");
@@ -398,10 +401,9 @@ export default function Customers() {
   const [toast, setToast] = useState({ message: "", type: "success" });
   const [toastVisible, setToastVisible] = useState(false);
 
-  const loadCustomers = async (page = 1) => {
+  const loadCustomers = useCallback(async (page = 1) => {
     setLoading(true);
     setError("");
-
     setToastVisible(false);
 
     const type = typeFilter === "All Types" ? "ALL" : typeFilter.toUpperCase();
@@ -430,7 +432,7 @@ export default function Customers() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, typeFilter, statusFilter]);
 
   const showToast = (message, type = "success") => {
     setToast({ message, type });
@@ -439,12 +441,12 @@ export default function Customers() {
   };
 
   useEffect(() => {
-    loadCustomers(1);
+    setCurrentPage(1);
   }, [search, typeFilter, statusFilter]);
 
   useEffect(() => {
     loadCustomers(currentPage);
-  }, [currentPage]);
+  }, [currentPage, loadCustomers]);
 
   const handleDelete = async (id) => {
     try {
@@ -472,18 +474,63 @@ export default function Customers() {
     }
   };
 
-  const handleSave = async (payload, customerId) => {
+  const handleSave = async (payload, customerId, files = []) => {
+    const user = JSON.parse(localStorage.getItem("pms_user") || "{}");
+    // Use the string user identifier from localStorage (prefer `userId` like "USR_xxx").
+    const createdByUserIdentifier = user?.userId ?? (user?.id ? String(user.id) : null);
+    const enrichedPayload = {
+      ...payload,
+      createdByUserId: createdByUserIdentifier,
+    };
+    const hasFiles = Array.isArray(files) && files.length > 0;
     try {
+      const headers = { "Content-Type": "application/json" };
+      if (user.token) headers.Authorization = `Bearer ${user.token}`;
+      let body;
+      if (hasFiles) {
+        body = new FormData();
+        delete headers["Content-Type"];
+        Object.entries(enrichedPayload).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            body.append(key, String(value));
+          }
+        });
+        files.forEach((file) => body.append("docs", file));
+      } else {
+        body = JSON.stringify(enrichedPayload);
+      }
       const response = await fetch(customerId ? `${API_URL}/${customerId}` : API_URL, {
         method: customerId ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        headers,
+        body,
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Unable to save customer");
       setShowModal(false);
       setEditingCustomer(null);
-      loadCustomers(currentPage);
+      // If created a new customer, go to first page so the new record is visible
+      if (!customerId) {
+        // clear any active filters/search so the newly created record is visible
+        setSearch("");
+        setTypeFilter("All Types");
+        setStatusFilter("All Status");
+        // optimistic update: show the created item at the top immediately
+        try {
+          setCustomers((prev) => {
+            const next = [data, ...prev];
+            return next.slice(0, PAGE_SIZE);
+          });
+          setTotalRecords((t) => (t || 0) + 1);
+          setCurrentPage(1);
+        } catch (e) {
+          // ignore optimistic update errors
+        }
+
+        // refresh from server to keep data consistent
+        await loadCustomers(1);
+      } else {
+        await loadCustomers(currentPage);
+      }
       showToast(customerId ? "Customer updated successfully." : "Customer added successfully.");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to save customer";
@@ -594,9 +641,11 @@ export default function Customers() {
                   </td>
                 </tr>
               ) : (
-                displayedCustomers.map((customer) => (
+                displayedCustomers.map((customer, idx) => {
+                  const rowIndex = (currentPage - 1) * PAGE_SIZE + idx + 1;
+                  return (
                   <tr key={customer.id}>
-                    <td className="id-cell">{customer.id}</td>
+                    <td className="id-cell">{rowIndex}</td>
                     <td>{customer.name}</td>
                     <td>
                       <span className={`badge ${customer.type === "TENANT" ? "badge-tenant" : "badge-owner"}`}>
@@ -618,7 +667,8 @@ export default function Customers() {
                       </div>
                     </td>
                   </tr>
-                ))
+                );
+                })
               )}
             </tbody>
           </table>

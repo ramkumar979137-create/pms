@@ -32,8 +32,8 @@ export default function Modal({ isOpen, onClose, title = "", size = "medium", ch
       }}
     >
       {!hideHeader && (
-        <DialogTitle sx={{ position: "sticky", top: 0, zIndex: 2, backgroundColor: "#fff", p: "32px 28px 20px 28px", borderBottom: "1px solid #ede4d7", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 2 }}>
-          <h2 id="modal-title" style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 700, color: "#12181f", margin: 0 }}>{title}</h2>
+        <DialogTitle sx={{ position: "sticky", top: 0, zIndex: 2, backgroundColor: "#fff", p: "32px 28px 20px 28px", borderBottom: "1px solid #ede4d7", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 2 }} id="modal-title">
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 700, color: "#12181f", margin: 0 }}>{title}</div>
           <IconButton onClick={onClose} aria-label="close" sx={{ p: 0, width: 28, height: 28, color: "#7a8694" }}>
             ×
           </IconButton>

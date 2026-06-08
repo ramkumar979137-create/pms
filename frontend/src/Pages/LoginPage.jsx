@@ -318,7 +318,8 @@ export default function Login({ onLogin, onSwitch }) {
 
       const user = data.user || {};
       const storedUser = {
-        id: user.userId || userId.trim().toUpperCase(),
+        id: user.id ?? user.userId ?? userId.trim().toUpperCase(),
+        userId: user.userId || userId.trim().toUpperCase(),
         name: user.name || "",
         email: user.email || "",
         role: user.role || (userId.trim().toUpperCase() === "ADMIN" ? "ADMIN" : "CUSTOMER"),

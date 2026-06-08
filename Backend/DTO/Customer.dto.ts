@@ -14,6 +14,9 @@ export interface CreateCustomerDTO {
   status?: string;
   notes?: string;
   password?: string;
+  createdByUserId?: string;
+  customerId?: string;
+  docs?: { name: string; url?: string; type?: string; uploadedAt?: string }[];
 }
 
 export interface UpdateCustomerDTO extends Partial<CreateCustomerDTO> {}

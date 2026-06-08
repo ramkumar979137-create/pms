@@ -1,11 +1,38 @@
 import { AppDataSource } from "../config/data-source";
 import { Customer } from "../Entity/Customer";
 import { CreateCustomerDTO, UpdateCustomerDTO } from "../DTO/Customer.dto";
+import path from "path";
+import fs from "fs";
 
 const repo = AppDataSource.getRepository(Customer);
 
-export const createCustomer = async (data: CreateCustomerDTO): Promise<Customer> => {
-  const customer = repo.create(data);
+/* ── Upload dir ── */
+const UPLOAD_DIR = path.join(__dirname, "../../uploads/customers");
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+export const saveFiles = (
+  files: Express.Multer.File[]
+): { name: string; url: string; type: string; uploadedAt: string }[] => {
+  return files.map((file) => {
+    const ext = path.extname(file.originalname);
+    const safeName = `${Date.now()}_${file.originalname.replace(/\s+/g, "_")}`;
+    const destPath = path.join(UPLOAD_DIR, safeName);
+    fs.writeFileSync(destPath, file.buffer);
+    return {
+      name: file.originalname,
+      url: `/uploads/customers/${safeName}`,
+      type: ext.replace(".", "").toLowerCase(),
+      uploadedAt: new Date().toISOString(),
+    };
+  });
+};
+
+export const createCustomer = async (data: CreateCustomerDTO, files: Express.Multer.File[] = []): Promise<Customer> => {
+  const savedDocs = saveFiles(files);
+  const customer = repo.create({
+    ...data,
+    docs: savedDocs,
+  });
   return await repo.save(customer);
 };
 
@@ -43,7 +70,7 @@ export const getAllCustomers = async (params: CustomerQueryParams = {}): Promise
 
   const total = await qb.getCount();
   const items = await qb
-    .orderBy("customer.id", "ASC")
+    .orderBy("customer.id", "DESC")
     .skip((page - 1) * limit)
     .take(limit)
     .getMany();
@@ -55,10 +82,13 @@ export const getCustomerById = async (id: number): Promise<Customer | null> => {
   return await repo.findOneBy({ id });
 };
 
-export const updateCustomer = async (id: number, data: UpdateCustomerDTO): Promise<Customer> => {
+export const updateCustomer = async (id: number, data: UpdateCustomerDTO, files: Express.Multer.File[] = []): Promise<Customer> => {
   const customer = await getCustomerById(id);
   if (!customer) throw new Error("Customer not found");
+  const newDocs = saveFiles(files);
+  const mergedDocs = [...(customer.docs || []), ...newDocs];
   Object.assign(customer, data);
+  if (newDocs.length > 0) customer.docs = mergedDocs;
   return await repo.save(customer);
 };
 

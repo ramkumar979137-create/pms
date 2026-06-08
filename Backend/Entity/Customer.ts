@@ -1,9 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, BeforeInsert } from "typeorm";
+import { v4 as uuidv4 } from "uuid";
 
 @Entity("customers")
 export class Customer {
   @PrimaryGeneratedColumn()
   id!: number;
+
+  @Column({ unique: true, nullable: true })
+  customerId?: string;
 
   @Column()
   firstName!: string;
@@ -41,6 +45,11 @@ export class Customer {
   @Column({ nullable: true })
   idProofNumber?: string;
 
+
+
+  @Column("json", { nullable: true })
+  docs?: { name: string; url?: string; type?: string; uploadedAt?: string }[];
+
   @Column({ nullable: true })
   status?: string;
 
@@ -48,7 +57,7 @@ export class Customer {
   notes?: string;
 
   @Column({ nullable: true })
-  createdByUserId?: number;
+  createdByUserId?: string;
 
   @Column({ nullable: true })
   password?: string;
@@ -58,4 +67,11 @@ export class Customer {
 
   @UpdateDateColumn()
   updatedAt!: Date;
+
+  @BeforeInsert()
+  generateCustomerId() {
+    if (!this.customerId) {
+      this.customerId = "CUS_" + uuidv4();
+    }
+  }
 }

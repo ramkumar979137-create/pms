@@ -41,8 +41,8 @@ export class Property {
   @Column({ type: "text", nullable: true })
   notes?: string;
 
-  @Column({ type: "int", nullable: true })
-  createdByUserId?: number;
+  @Column({ nullable: true })
+  createdByUserId?: string;
 
   @CreateDateColumn()
   createdAt!: Date;

@@ -34,7 +34,7 @@ export const getAllProperties = async (params: PropertyQueryParams): Promise<{ i
   }
 
   const [items, total] = await query
-    .orderBy("property.id", "ASC")
+    .orderBy("property.createdAt", "DESC")
     .skip(skip)
     .take(limit)
     .getManyAndCount();

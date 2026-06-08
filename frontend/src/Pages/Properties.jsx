@@ -389,11 +389,19 @@ export default function Properties() {
   };
 
   const handleSave = async (payload, propertyId) => {
+    const user = JSON.parse(localStorage.getItem("pms_user") || "{}");
+    const createdByUserIdentifier = user?.userId ?? (user?.id ? String(user.id) : null);
+    const enrichedPayload = {
+      ...payload,
+      createdByUserId: createdByUserIdentifier,
+    };
     try {
+      const headers = { "Content-Type": "application/json" };
+      if (user.token) headers.Authorization = `Bearer ${user.token}`;
       const response = await fetch(propertyId ? `${API_URL}/${propertyId}` : API_URL, {
         method: propertyId ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        headers,
+        body: JSON.stringify(enrichedPayload),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Unable to save property");

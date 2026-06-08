@@ -11,7 +11,7 @@ export interface CreatePropertyDTO {
   maintenancePhone?: string;
   maintenanceEmail?: string;
   notes?: string;
-  createdByUserId?: number;
+  createdByUserId?: string;
 }
 
 export interface UpdatePropertyDTO extends Partial<CreatePropertyDTO> {}

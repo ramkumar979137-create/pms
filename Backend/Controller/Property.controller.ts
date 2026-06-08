@@ -10,9 +10,13 @@ import { PropertyQueryParams } from "../DTO/Property.dto";
 
 export const create = async (req: Request, res: Response) => {
   try {
+    // Prefer the string identifier from the token (e.g. 'USR_xxx')
+    const incomingIdentifier = (req as any).userIdentifier ?? req.body.createdByUserId ?? null;
+    const createdByUserId = incomingIdentifier !== undefined && incomingIdentifier !== null ? String(incomingIdentifier) : null;
+
     const propertyData = {
       ...req.body,
-      createdByUserId: (req as any).userId || null,
+      createdByUserId,
     };
     const property = await createProperty(propertyData);
     res.status(201).json(property);

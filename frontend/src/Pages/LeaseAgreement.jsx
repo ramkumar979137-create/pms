@@ -8,27 +8,16 @@ import "../Css/LeaseAgreement.css";
 const API = "http://localhost:5000/api/lease-agreements";
 const leaseTermOptions = ["6", "12", "24", "36"];
 const paymentOptions = ["Bank Transfer", "UPI", "Cash", "Cheque"];
-const allCustomers = [
-  { id: "cust-1", name: "Priya Sharma", userId: 1 },
-  { id: "cust-2", name: "Arjun Menon", userId: 1 },
-  { id: "cust-3", name: "Sneha Patel", userId: 2 },
-  { id: "cust-4", name: "Mohammed Hassan", userId: 2 },
-];
-const allProperties = [
-  { id: "prop-1", name: "Lotus Residency", address: "12 KK Nagar, Madurai", userId: 1 },
-  { id: "prop-2", name: "Skyline Towers", address: "88 OMR, Chennai", userId: 1 },
-  { id: "prop-3", name: "Green Villa", address: "4 Whitefield, Bengaluru", userId: 2 },
-  { id: "prop-4", name: "Downtown Plaza", address: "50 MG Road, Bengaluru", userId: 2 },
-];
 const currencyOptions = ["₹ INR", "$ USD", "€ EUR"];
 const statusColor = { Active: "success", Expired: "danger", Terminated: "danger", "Renewal Pending": "warning" };
 const emptyForm = {
   leaseId: "",
-  customer: "",
+  customerId: "",
   customerName: "",
   tenant: "",
   landlord: "",
   property: "",
+  propertyId: "",
   propertyUnit: "",
   propertyType: "Residential",
   propertyAddress: "",
@@ -216,29 +205,65 @@ export default function LeaseAgreement() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [customers, setCustomers] = useState([]);
+  const [properties, setProperties] = useState([]);
   const [dragOver, setDragOver] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const fileRef = useRef();
-  const currentUserId = Number(JSON.parse(localStorage.getItem("pms_user") || "{}")?.id || 1);
-  const currentCustomers = allCustomers.filter(c => c.userId === currentUserId);
-  const currentProperties = allProperties.filter(p => p.userId === currentUserId);
-  const handleCustomerSelect = (customerName) => {
-    const customer = allCustomers.find(c => c.name === customerName);
+  const storedUser = localStorage.getItem("pms_user");
+  const parsedUser = storedUser ? JSON.parse(storedUser) : {};
+  // Prefer the string user identifier (userId like 'USR_xxx') stored at login,
+  // fall back to numeric id if necessary.
+  const currentUserId = parsedUser?.userId ?? parsedUser?.id ?? parsedUser ?? 1;
+  const currentCustomers = customers.filter(c => String(c.createdByUserId) === String(currentUserId));
+  const currentProperties = properties.filter(p => String(p.createdByUserId) === String(currentUserId));
+  const handleCustomerSelect = (customerId) => {
+    const customer = currentCustomers.find(c => c.id === customerId);
     setForm(prev => ({
       ...prev,
-      customer: customer?.name || "",
-      customerName: customer?.name || (customerName === "" ? "" : prev.customerName),
+      customerId: customer?.id || "",
+      customerName: customer?.name || "",
     }));
   };
   const handlePropertySelect = (propertyId) => {
-    const property = allProperties.find(p => p.name === propertyId);
+    const property = currentProperties.find(p => p.id === propertyId);
     setForm(prev => ({
       ...prev,
+      propertyId: property?.id || "",
       property: property?.name || "",
-      propertyUnit: property?.name || prev.propertyUnit,
-      propertyAddress: property?.address || prev.propertyAddress,
+      propertyAddress: property?.address || "",
+      propertyUnit: "",
     }));
   };
+
+  useEffect(() => {
+    const fetchLists = async () => {
+      try {
+        const [custRes, propRes] = await Promise.all([
+          axios.get("http://localhost:5000/api/customers?limit=200"),
+          axios.get("http://localhost:5000/api/properties?limit=200"),
+        ]);
+        const loadedCustomers = Array.isArray(custRes.data.items)
+          ? custRes.data.items
+          : Array.isArray(custRes.data)
+          ? custRes.data
+          : [];
+        const loadedProperties = Array.isArray(propRes.data.items)
+          ? propRes.data.items
+          : Array.isArray(propRes.data)
+          ? propRes.data
+          : [];
+        setCustomers(loadedCustomers.map(c => ({
+          ...c,
+          name: `${c.firstName || ""} ${c.lastName || ""}`.trim() || c.phone || c.email || "Customer",
+        })));
+        setProperties(loadedProperties);
+      } catch (err) {
+        console.error("Failed to load lease dropdown data", err);
+      }
+    };
+    fetchLists();
+  }, []);
   const tenure = calculateTenure(form.startDate, form.endDate);
 
   const fetchLeases = async () => {
@@ -279,7 +304,7 @@ export default function LeaseAgreement() {
       const user = JSON.parse(localStorage.getItem("pms_user") || "{}");
 
       Object.entries(form).forEach(([k, v]) => fd.append(k, String(v)));
-      fd.append("userId", String(user.id || 1));
+      fd.append("userId", String(user.id ?? user ?? 1));
       files.forEach(f => fd.append("docs", f));
 
       if (editingId) {
@@ -301,16 +326,19 @@ export default function LeaseAgreement() {
   };
 
   const handleEdit = (lease) => {
+    const selectedCustomer = currentCustomers.find(c => c.id === lease.customerId);
+    const selectedProperty = currentProperties.find(p => p.id === lease.propertyId);
     setForm({
       leaseId: lease.leaseId || "",
-      customer: lease.customer || "",
-      customerName: lease.customerName || "",
+      customerId: lease.customerId || "",
+      customerName: lease.customerName || selectedCustomer?.name || "",
       tenant: lease.tenant || "",
       landlord: lease.landlord || "",
-      property: lease.property || "",
+      property: lease.property || selectedProperty?.name || "",
+      propertyId: lease.propertyId || "",
       propertyUnit: lease.propertyUnit || "",
       propertyType: lease.propertyType || "Residential",
-      propertyAddress: lease.propertyAddress || "",
+      propertyAddress: lease.propertyAddress || selectedProperty?.address || "",
       startDate: lease.startDate || "",
       endDate: lease.endDate || "",
       leaseTerm: lease.leaseTerm || "12",
@@ -443,27 +471,27 @@ export default function LeaseAgreement() {
                 </div>
                 <div className="field-group">
                   <label>Customer *</label>
-                  <select value={form.customer} onChange={e => handleCustomerSelect(e.target.value)}>
+                  <select required value={form.customerId} onChange={e => handleCustomerSelect(e.target.value)}>
                     <option value="">— Select Customer —</option>
-                    {currentCustomers.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                    {currentCustomers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div className="field-group">
                   <label>Customer Name</label>
-                  <input value={form.customerName} onChange={e => setForm({ ...form, customerName: e.target.value })} placeholder="Customer name" />
+                  <input value={form.customerName} placeholder="Customer name" readOnly />
                 </div>
               </div>
               <div className="lease-grid-4">
                 <div className="field-group">
                   <label>Property *</label>
-                  <select value={form.property} onChange={e => handlePropertySelect(e.target.value)}>
+                  <select required value={form.propertyId} onChange={e => handlePropertySelect(e.target.value)}>
                     <option value="">— Select Property —</option>
-                    {currentProperties.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                    {currentProperties.map(p => <option key={p.id} value={p.id}>{`${p.name} — ${p.address}`}</option>)}
                   </select>
                 </div>
                 <div className="field-group">
-                  <label>Property Name</label>
-                  <input value={form.propertyUnit} onChange={e => setForm({ ...form, propertyUnit: e.target.value })} placeholder="Property name" />
+                  <label>Property Unit</label>
+                  <input value={form.propertyUnit} onChange={e => setForm({ ...form, propertyUnit: e.target.value })} placeholder="Unit / Apartment / Office" />
                 </div>
                 <div className="field-group form-full">
                   <label>Property Address</label>

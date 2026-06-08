@@ -2,6 +2,7 @@ import express from "express";
 import path from "path";
 import { AppDataSource } from "./config/data-source";
 import authRoutes from "./Routes/Auth.route";
+import { attachUserFromToken } from "./Utils/Auth.middleware";
 import rentalRoutes from "./Routes/Rentalagreement.routes";
 import cancellationRoutes from "./Routes/RentalCancellation.routes";
 import leaseRoutes from "./Routes/LeaseAgreement.routes";
@@ -20,6 +21,7 @@ app.use(cors());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.use("/api", authRoutes);
+app.use(attachUserFromToken);
 app.use("/api/rental-agreements", rentalRoutes);
 app.use("/api/rental-cancellations", cancellationRoutes);
 app.use("/api/lease-agreements", leaseRoutes);
