@@ -8,7 +8,18 @@ export interface CreateLeaseCancellationDTO {
   reason:        string;
   penaltyAmount?: number;
   status?:       string;
-  userId:        number;
+  userId?:        number;
+
+  customerId?: number;
+  customerIdentifier?: string;
+  customerName?: string;
+  propertyId?: number;
+  propertyAddress?: string;
+  leaseValueAmount?: number;
+  advanceAmount?: number;
+  delayPenaltyAmount?: number;
+  petsAllowed?: boolean;
+  userIdentifier?: string;
 }
 
 export interface UpdateLeaseCancellationDTO extends Partial<CreateLeaseCancellationDTO> {

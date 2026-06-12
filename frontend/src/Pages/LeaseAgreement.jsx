@@ -2,34 +2,25 @@
 import { useState, useEffect, useRef } from "react";
 import Modal from "../Components/Modal";
 import axios from "axios";
+// using native controls for currency + amount
 import "../Css/Global.css";
 import "../Css/LeaseAgreement.css";
 
+
 const API = "http://localhost:5000/api/lease-agreements";
-const leaseTermOptions = ["6", "12", "24", "36"];
-const paymentOptions = ["Bank Transfer", "UPI", "Cash", "Cheque"];
 const currencyOptions = ["₹ INR", "$ USD", "€ EUR"];
+// currencyOptions used for native <select>
 const statusColor = { Active: "success", Expired: "danger", Terminated: "danger", "Renewal Pending": "warning" };
 const emptyForm = {
-  leaseId: "",
   customerId: "",
+  customerIdentifier: "",
   customerName: "",
-  tenant: "",
-  landlord: "",
   property: "",
   propertyId: "",
   propertyUnit: "",
-  propertyType: "Residential",
   propertyAddress: "",
   startDate: "",
   endDate: "",
-  leaseTerm: "12",
-  monthlyRent: "",
-  securityDeposit: "",
-  maintenanceCharge: "",
-  utilityCharge: "",
-  rentDueDay: "1",
-  paymentMode: "Bank Transfer",
   leaseValueCurrency: "₹ INR",
   leaseValueAmount: "",
   advanceCurrency: "₹ INR",
@@ -38,12 +29,9 @@ const emptyForm = {
   exceptionDate: "",
   delayPenaltyCurrency: "₹ INR",
   delayPenaltyAmount: "",
-  increasePercentage: "",
-  terms: "",
-  notes: "",
-  autoRenewal: false,
   status: "Active",
   userId: 1,
+  userIdentifier: "",
   petsAllowed: false,
 };
 
@@ -78,125 +66,21 @@ function calculateTenure(startDate, endDate) {
   if (months <= 0) return "";
   return `${months} month${months === 1 ? "" : "s"}`;
 }
-const SAMPLE_LEASES = [
-  {
-    id: 1,
-    leaseId: "LA-2024-001",
-    tenant: "Priya Sharma",
-    landlord: "Rajesh Kumar",
-    property: "Lotus Residency",
-    propertyUnit: "3B",
-    propertyType: "Residential",
-    propertyAddress: "12 KK Nagar, Madurai",
-    startDate: "2024-01-15",
-    endDate: "2025-01-14",
-    leaseTerm: "12",
-    monthlyRent: 18000,
-    securityDeposit: 36000,
-    maintenanceCharge: 500,
-    utilityCharge: 200,
-    rentDueDay: "5",
-    paymentMode: "Bank Transfer",
-    increasePercentage: "5",
-    terms: "Monthly rent payable by the 5th of each month. Late payment fee: 5% per month.",
-    notes: "Tenant well-behaved, paid on time.",
-    autoRenewal: true,
-    status: "Active",
-    docs: [
-      { name: "lease_deed_001.pdf" },
-      { name: "tenant_id_proof.jpg" },
-      { name: "property_noc.pdf" }
-    ]
-  },
-  {
-    id: 2,
-    leaseId: "LA-2024-002",
-    tenant: "Arjun Menon",
-    landlord: "Priya Sundaram",
-    property: "Skyline Towers",
-    propertyUnit: "7A",
-    propertyType: "Residential",
-    propertyAddress: "88 OMR, Chennai",
-    startDate: "2023-06-01",
-    endDate: "2024-05-31",
-    leaseTerm: "12",
-    monthlyRent: 25000,
-    securityDeposit: 50000,
-    maintenanceCharge: 1000,
-    utilityCharge: 500,
-    rentDueDay: "1",
-    paymentMode: "UPI",
-    increasePercentage: "7",
-    terms: "Premium apartment. Annual increment 7%. Pet policy: No pets allowed.",
-    notes: "Corporate lease, defaulted in last 3 months.",
-    autoRenewal: false,
-    status: "Expired",
-    docs: [
-      { name: "lease_deed_002.pdf" },
-      { name: "tenant_passport.pdf" }
-    ]
-  },
-  {
-    id: 3,
-    leaseId: "LA-2024-003",
-    tenant: "Sneha Patel",
-    landlord: "Vikram Singh",
-    property: "Green Villa",
-    propertyUnit: "Ground",
-    propertyType: "Villa",
-    propertyAddress: "4 Whitefield, Bengaluru",
-    startDate: "2024-03-20",
-    endDate: "2026-03-19",
-    leaseTerm: "24",
-    monthlyRent: 35000,
-    securityDeposit: 105000,
-    maintenanceCharge: 1500,
-    utilityCharge: 800,
-    rentDueDay: "20",
-    paymentMode: "Cheque",
-    increasePercentage: "4",
-    terms: "2-year lease. 3-month notice required for termination. Renewal negotiable.",
-    notes: "Family of 4, regular maintenance done.",
-    autoRenewal: true,
-    status: "Active",
-    docs: [
-      { name: "lease_agreement_villa.pdf" },
-      { name: "property_photos.zip" },
-      { name: "govt_id_scan.pdf" }
-    ]
-  },
-  {
-    id: 4,
-    leaseId: "LA-2023-045",
-    tenant: "Mohammed Hassan",
-    landlord: "Ravi Shankar",
-    property: "Downtown Plaza",
-    propertyUnit: "Suite 501",
-    propertyType: "Commercial",
-    propertyAddress: "50 MG Road, Bengaluru",
-    startDate: "2022-01-01",
-    endDate: "2023-12-31",
-    leaseTerm: "36",
-    monthlyRent: 55000,
-    securityDeposit: 165000,
-    maintenanceCharge: 3000,
-    utilityCharge: 1200,
-    rentDueDay: "1",
-    paymentMode: "Bank Transfer",
-    increasePercentage: "6",
-    terms: "Commercial lease. Business registered office. Renewal clause included.",
-    notes: "Professional tenant, terminated early.",
-    autoRenewal: false,
-    status: "Terminated",
-    docs: [
-      { name: "commercial_lease.pdf" },
-      { name: "business_registration.pdf" }
-    ]
-  }
-];
+
+function calculateDays(startDate, endDate) {
+  if (!startDate || !endDate) return "";
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "";
+  const ms = end.getTime() - start.getTime();
+  if (ms <= 0) return "";
+  const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+  return String(days);
+}
+
 
 export default function LeaseAgreement() {
-  const [leases, setLeases] = useState(SAMPLE_LEASES);
+  const [leases, setLeases] = useState([]);
   const [showForm, setShow] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [files, setFiles] = useState([]);
@@ -214,24 +98,61 @@ export default function LeaseAgreement() {
   const parsedUser = storedUser ? JSON.parse(storedUser) : {};
   // Prefer the string user identifier (userId like 'USR_xxx') stored at login,
   // fall back to numeric id if necessary.
-  const currentUserId = parsedUser?.userId ?? parsedUser?.id ?? parsedUser ?? 1;
+  
+  const currentUserId =parsedUser?.id;
+  console.log("Parsed user from localStorage:", currentUserId,customers);
   const currentCustomers = customers.filter(c => String(c.createdByUserId) === String(currentUserId));
   const currentProperties = properties.filter(p => String(p.createdByUserId) === String(currentUserId));
+  // Ensure that when editing a lease, its customer appears in the dropdown
+  // even if it's not part of `currentCustomers` (e.g. different creator).
+  const displayedCustomers = (() => {
+    // Show all customers by default in dropdown so options are visible;
+    // still include an edit-time fallback if needed.
+    const arr = Array.isArray(customers) ? [...customers] : [];
+    if (editingId && form.customerId) {
+      const exists = arr.find(c => String(c.id) === String(form.customerId));
+      if (!exists) {
+        arr.push({ id: form.customerId, name: form.customerName || "Customer", createdByUserId: parsedUser?.id });
+      }
+    }
+    return arr;
+  })();
+  // Ensure that when editing a lease, its property appears in the dropdown
+  // even if it's not part of `currentProperties` (e.g. different creator).
+  const displayedProperties = (() => {
+    // Show all properties by default in dropdown so options are visible;
+    // still include an edit-time fallback if needed.
+    const arr = Array.isArray(properties) ? [...properties] : [];
+    if (editingId && form.propertyId) {
+      const exists = arr.find(p => String(p.id) === String(form.propertyId));
+      if (!exists) {
+        arr.push({ id: form.propertyId, name: form.property || "Property", address: form.propertyAddress || "", createdByUserId: parsedUser?.id });
+      }
+    }
+    return arr;
+  })();
   const handleCustomerSelect = (customerId) => {
-    const customer = currentCustomers.find(c => c.id === customerId);
+    // customerId may come as string from the select; normalize to number when possible
+    const id = customerId === "" ? "" : Number(customerId);
+    const customer = displayedCustomers.find(c => (typeof c.id === "number" ? c.id === id : String(c.id) === String(customerId)));
     setForm(prev => ({
       ...prev,
-      customerId: customer?.id || "",
-      customerName: customer?.name || "",
+      customerId: customer ? customer.id : "",
+      customerIdentifier: customer ? customer.customerId || "" : "",
+      customerName: customer ? customer.name : "",
+      userId: customer && typeof customer.createdByUserId === 'number' ? customer.createdByUserId : prev.userId,
+      userIdentifier: customer && typeof customer.createdByUserId === 'string' ? customer.createdByUserId : prev.userIdentifier,
     }));
+    console.log("Selected customer:", customer, "from ID:", customerId);
   };
   const handlePropertySelect = (propertyId) => {
-    const property = currentProperties.find(p => p.id === propertyId);
+    const id = propertyId === "" ? "" : Number(propertyId);
+    const property = displayedProperties.find(p => (typeof p.id === "number" ? p.id === id : String(p.id) === String(propertyId)));
     setForm(prev => ({
       ...prev,
-      propertyId: property?.id || "",
-      property: property?.name || "",
-      propertyAddress: property?.address || "",
+      propertyId: property ? property.id : "",
+      property: property ? property.name : "",
+      propertyAddress: property ? property.address : "",
       propertyUnit: "",
     }));
   };
@@ -264,7 +185,8 @@ export default function LeaseAgreement() {
     };
     fetchLists();
   }, []);
-  const tenure = calculateTenure(form.startDate, form.endDate);
+  // Show tenure as duration in days (auto-calculated)
+  const tenure = calculateDays(form.startDate, form.endDate);
 
   const fetchLeases = async () => {
     setLoading(true);
@@ -273,10 +195,10 @@ export default function LeaseAgreement() {
       if (filter !== "All") params.status = filter;
       if (search) params.tenant = search;
       const res = await axios.get(API, { params });
-      setLeases(res.data.leases || SAMPLE_LEASES);
+      setLeases(res.data.leases || []);
     } catch {
       setError("Failed to load leases.");
-      setLeases(SAMPLE_LEASES);
+      setLeases([]);
     } finally {
       setLoading(false);
     }
@@ -301,16 +223,34 @@ export default function LeaseAgreement() {
     setError("");
     try {
       const fd = new FormData();
-      const user = JSON.parse(localStorage.getItem("pms_user") || "{}");
+      const user = JSON.parse(localStorage.getItem("pms_user") || "{}") || {};
 
-      Object.entries(form).forEach(([k, v]) => fd.append(k, String(v)));
-      fd.append("userId", String(user.id ?? user ?? 1));
+      // append form fields
+      Object.entries(form).forEach(([k, v]) => {
+        // do not append undefined values
+        if (v !== undefined) fd.append(k, String(v));
+      });
+
+      // append identifiers from logged-in user when available
+      if (user && typeof user.id !== "undefined" && Number.isFinite(Number(user.id))) {
+        fd.append("userId", String(user.id));
+      }
+      if (user && typeof user.userId !== "undefined") {
+        fd.append("userIdentifier", String(user.userId));
+      }
+
+      // Note: form may also contain `userIdentifier` populated from selected customer; form entries were appended above.
+
       files.forEach(f => fd.append("docs", f));
 
+      // Build headers; include Authorization header when token exists
+      const headers = { "Content-Type": "multipart/form-data" };
+      if (user && user.token) headers.Authorization = `Bearer ${user.token}`;
+
       if (editingId) {
-        await axios.put(`${API}/${editingId}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+        await axios.put(`${API}/${editingId}`, fd, { headers });
       } else {
-        await axios.post(API, fd, { headers: { "Content-Type": "multipart/form-data" } });
+        await axios.post(API, fd, { headers });
       }
 
       setForm(emptyForm);
@@ -326,28 +266,18 @@ export default function LeaseAgreement() {
   };
 
   const handleEdit = (lease) => {
-    const selectedCustomer = currentCustomers.find(c => c.id === lease.customerId);
-    const selectedProperty = currentProperties.find(p => p.id === lease.propertyId);
+    const selectedCustomer = customers.find(c => c.id === lease.customerId) || currentCustomers.find(c => c.id === lease.customerId);
+    const selectedProperty = properties.find(p => p.id === lease.propertyId) || currentProperties.find(p => p.id === lease.propertyId);
     setForm({
-      leaseId: lease.leaseId || "",
       customerId: lease.customerId || "",
+      customerIdentifier: lease.customerIdentifier || selectedCustomer?.customerId || "",
       customerName: lease.customerName || selectedCustomer?.name || "",
-      tenant: lease.tenant || "",
-      landlord: lease.landlord || "",
       property: lease.property || selectedProperty?.name || "",
       propertyId: lease.propertyId || "",
       propertyUnit: lease.propertyUnit || "",
-      propertyType: lease.propertyType || "Residential",
       propertyAddress: lease.propertyAddress || selectedProperty?.address || "",
       startDate: lease.startDate || "",
       endDate: lease.endDate || "",
-      leaseTerm: lease.leaseTerm || "12",
-      monthlyRent: lease.monthlyRent || "",
-      securityDeposit: lease.securityDeposit || "",
-      maintenanceCharge: lease.maintenanceCharge || "",
-      utilityCharge: lease.utilityCharge || "",
-      rentDueDay: lease.rentDueDay || "1",
-      paymentMode: lease.paymentMode || "Bank Transfer",
       leaseValueCurrency: lease.leaseValueCurrency || "₹ INR",
       leaseValueAmount: lease.leaseValueAmount || "",
       advanceCurrency: lease.advanceCurrency || "₹ INR",
@@ -356,10 +286,6 @@ export default function LeaseAgreement() {
       exceptionDate: lease.exceptionDate || "",
       delayPenaltyCurrency: lease.delayPenaltyCurrency || "₹ INR",
       delayPenaltyAmount: lease.delayPenaltyAmount || "",
-      increasePercentage: lease.increasePercentage || "",
-      terms: lease.terms || "",
-      notes: lease.notes || "",
-      autoRenewal: lease.autoRenewal || false,
       status: lease.status || "Active",
       petsAllowed: typeof lease.petsAllowed === "boolean" ? lease.petsAllowed : false,
       userId: lease.userId || 1,
@@ -456,10 +382,7 @@ export default function LeaseAgreement() {
             <div className="form-section">
               <div className="form-section-title">Customer & Property</div>
               <div className="lease-grid-4">
-                <div className="field-group">
-                  <label>Lease ID</label>
-                  <input value={form.leaseId} onChange={e => setForm({ ...form, leaseId: e.target.value })} placeholder="LSE-007" />
-                </div>
+                
                 <div className="field-group">
                   <label>Status</label>
                   <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
@@ -473,7 +396,7 @@ export default function LeaseAgreement() {
                   <label>Customer *</label>
                   <select required value={form.customerId} onChange={e => handleCustomerSelect(e.target.value)}>
                     <option value="">— Select Customer —</option>
-                    {currentCustomers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {displayedCustomers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div className="field-group">
@@ -486,7 +409,7 @@ export default function LeaseAgreement() {
                   <label>Property *</label>
                   <select required value={form.propertyId} onChange={e => handlePropertySelect(e.target.value)}>
                     <option value="">— Select Property —</option>
-                    {currentProperties.map(p => <option key={p.id} value={p.id}>{`${p.name} — ${p.address}`}</option>)}
+                    {displayedProperties.map(p => <option key={p.id} value={p.id}>{`${p.name} — ${p.address || ''}`}</option>)}
                   </select>
                 </div>
                 <div className="field-group">
@@ -513,30 +436,37 @@ export default function LeaseAgreement() {
                 </div>
                 <div className="field-group form-full">
                   <label>Tenure (auto-calculated)</label>
-                  <input readOnly value={tenure} placeholder="Auto-calculated from dates" />
+                  <div className="split-input">
+                    <select disabled style={{ width: 120 }}>
+                      <option>Days</option>
+                    </select>
+                    <input readOnly value={tenure} placeholder="Auto-calculated from dates" />
+                  </div>
                 </div>
               </div>
+              {/* Duration (days) is shown in the Tenure field above */}
             </div>
 
             <div className="form-section">
               <div className="form-section-title">Financial Details</div>
-              <div className="lease-grid-4">
+              <div className="lease-grid-3">
                 <div className="field-group">
                   <label>Lease Value *</label>
-                  <div className="split-input">
-                    <select value={form.leaseValueCurrency} onChange={e => setForm({ ...form, leaseValueCurrency: e.target.value })}>
+                  
+                  <div className="split-input-currency">
+                    <select value={form.leaseValueCurrency} onChange={e => setForm({ ...form, leaseValueCurrency: e.target.value })} style={{ width: 120,borderRadius:"0px" }}>
                       {currencyOptions.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
-                    <input type="number" value={form.leaseValueAmount} onChange={e => setForm({ ...form, leaseValueAmount: e.target.value })} placeholder="0.00" />
+                    <input style={{backgroundColor:"white",borderRadius:"0px"}} type="number" value={form.leaseValueAmount} onChange={e => setForm({ ...form, leaseValueAmount: e.target.value })} placeholder="0.00" />
                   </div>
                 </div>
                 <div className="field-group">
                   <label>Advance Amount</label>
-                  <div className="split-input">
-                    <select value={form.advanceCurrency} onChange={e => setForm({ ...form, advanceCurrency: e.target.value })}>
+                  <div className="split-input" style={{gap:"0px"}}>
+                    <select value={form.advanceCurrency} onChange={e => setForm({ ...form, advanceCurrency: e.target.value })} style={{ width: 120,borderRadius:"0px" }}>
                       {currencyOptions.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
-                    <input type="number" value={form.advanceAmount} onChange={e => setForm({ ...form, advanceAmount: e.target.value })} placeholder="0.00" />
+                    <input type="number" style={{backgroundColor:"white",borderRadius:"0px"}} value={form.advanceAmount} onChange={e => setForm({ ...form, advanceAmount: e.target.value })} placeholder="0.00" />
                   </div>
                 </div>
               </div>
@@ -556,10 +486,10 @@ export default function LeaseAgreement() {
                 <div className="field-group form-full">
                   <label>Delay Penalty</label>
                   <div className="split-input">
-                    <select value={form.delayPenaltyCurrency} onChange={e => setForm({ ...form, delayPenaltyCurrency: e.target.value })}>
+                    <select style={{borderRadius:"0px", width:"10%"}}  value={form.delayPenaltyCurrency} onChange={e => setForm({ ...form, delayPenaltyCurrency: e.target.value })}>
                       {currencyOptions.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
-                    <input type="number" value={form.delayPenaltyAmount} onChange={e => setForm({ ...form, delayPenaltyAmount: e.target.value })} placeholder="0.00" />
+                    <input style={{backgroundColor:"white",borderRadius:"0px"}} type="number" value={form.delayPenaltyAmount} onChange={e => setForm({ ...form, delayPenaltyAmount: e.target.value })} placeholder="0.00" />
                   </div>
                 </div>
               </div>
@@ -576,75 +506,7 @@ export default function LeaseAgreement() {
               </div>
             </div>
 
-            <div className="form-section">
-              <div className="form-section-title">Agreement Details</div>
-              <div className="form-grid" style={{ marginBottom: "1rem" }}>
-                <div className="field-group">
-                  <label>Tenant Name *</label>
-                  <input required value={form.tenant} onChange={e => setForm({ ...form, tenant: e.target.value })} placeholder="Priya Sharma" />
-                </div>
-                <div className="field-group">
-                  <label>Landlord Name *</label>
-                  <input required value={form.landlord} onChange={e => setForm({ ...form, landlord: e.target.value })} placeholder="John Doe" />
-                </div>
-                <div className="field-group">
-                  <label>Property Type</label>
-                  <select value={form.propertyType} onChange={e => setForm({ ...form, propertyType: e.target.value })}>
-                    {["Residential", "Commercial", "Villa", "Hotel", "Hostel"].map(t => <option key={t}>{t}</option>)}
-                  </select>
-                </div>
-                <div className="field-group">
-                  <label>Lease Term (months)</label>
-                  <select value={form.leaseTerm} onChange={e => setForm({ ...form, leaseTerm: e.target.value })}>
-                    {leaseTermOptions.map(t => <option key={t}>{t}</option>)}
-                  </select>
-                </div>
-                <div className="field-group">
-                  <label>Monthly Rent (₹) *</label>
-                  <input required type="number" value={form.monthlyRent} onChange={e => setForm({ ...form, monthlyRent: e.target.value })} placeholder="18000" />
-                </div>
-                <div className="field-group">
-                  <label>Security Deposit (₹)</label>
-                  <input type="number" value={form.securityDeposit} onChange={e => setForm({ ...form, securityDeposit: e.target.value })} placeholder="36000" />
-                </div>
-                <div className="field-group">
-                  <label>Maintenance Charge (₹)</label>
-                  <input type="number" value={form.maintenanceCharge} onChange={e => setForm({ ...form, maintenanceCharge: e.target.value })} placeholder="500" />
-                </div>
-                <div className="field-group">
-                  <label>Utility Charge (₹)</label>
-                  <input type="number" value={form.utilityCharge} onChange={e => setForm({ ...form, utilityCharge: e.target.value })} placeholder="200" />
-                </div>
-                <div className="field-group">
-                  <label>Rent Due Day (1–28)</label>
-                  <input type="number" min="1" max="28" value={form.rentDueDay} onChange={e => setForm({ ...form, rentDueDay: e.target.value })} />
-                </div>
-                <div className="field-group">
-                  <label>Payment Mode</label>
-                  <select value={form.paymentMode} onChange={e => setForm({ ...form, paymentMode: e.target.value })}>
-                    {paymentOptions.map(p => <option key={p}>{p}</option>)}
-                  </select>
-                </div>
-                <div className="field-group">
-                  <label>Annual Rent Increase (%)</label>
-                  <input type="number" value={form.increasePercentage} onChange={e => setForm({ ...form, increasePercentage: e.target.value })} placeholder="5" />
-                </div>
-                <div className="field-group" style={{ justifyContent: "flex-end" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", marginTop: "1.5rem" }}>
-                    <input type="checkbox" checked={form.autoRenewal} onChange={e => setForm({ ...form, autoRenewal: e.target.checked })} />
-                    Auto Renewal
-                  </label>
-                </div>
-                <div className="field-group form-full">
-                  <label>Terms & Conditions</label>
-                  <textarea value={form.terms} onChange={e => setForm({ ...form, terms: e.target.value })} placeholder="Lease terms..." />
-                </div>
-                <div className="field-group form-full">
-                  <label>Notes / Remarks</label>
-                  <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Internal remarks..." />
-                </div>
-              </div>
-            </div>
+            {/* Agreement Details removed per request */}
 
             {/* ── Document Upload ── */}
             <div style={{ marginBottom: "1.25rem" }}>
@@ -703,9 +565,9 @@ export default function LeaseAgreement() {
             <table className="lease-table">
               <thead>
                 <tr>
-                  <th>Lease ID</th>
+                  <th>#</th>
                   <th>Customer</th>
-                  <th>Property</th>
+                  {/* <th>Property</th> */}
                   <th>Start</th>
                   <th>End</th>
                   <th>Tenure</th>
@@ -717,16 +579,16 @@ export default function LeaseAgreement() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(l => (
+                {filtered.map((l, idx) => (
                   <tr key={l.id}>
-                    <td className="lease-cell-id">{l.leaseId}</td>
+                    <td className="lease-cell-id">{idx + 1}</td>
                     <td>{l.tenant}</td>
-                    <td>{l.property} {l.propertyUnit}</td>
+                    {/* <td>{l.property} {l.propertyUnit}</td> */}
                     <td>{l.startDate}</td>
                     <td>{l.endDate}</td>
                     <td>{l.leaseTerm} months</td>
-                    <td className="lease-cell-amount">₹{Number(l.monthlyRent).toLocaleString('en-IN')}.00</td>
-                    <td className="lease-cell-amount">₹{Number(l.securityDeposit).toLocaleString('en-IN')}.00</td>
+                    <td className="lease-cell-amount">₹{(l.leaseValueAmount ? Number(l.leaseValueAmount) : Number(l.monthlyRent || 0)).toLocaleString('en-IN')}.00</td>
+                    <td className="lease-cell-amount">₹{(l.advanceAmount ? Number(l.advanceAmount) : Number(l.securityDeposit || 0)).toLocaleString('en-IN')}.00</td>
                     <td><span className={`badge-lease ${statusColor[l.status]}`}>{l.status.toUpperCase()}</span></td>
                     <td>
                       <button className="lease-pdf-btn" type="button">
@@ -734,13 +596,18 @@ export default function LeaseAgreement() {
                       </button>
                     </td>
                     <td className="lease-action-cell">
-                      <button className="lease-link-btn" onClick={() => handleEdit(l)}>Edit</button>
+                      <button className="lease-link-btn" onClick={() => handleEdit(l)} title="Edit">
+                        <i className="bi bi-pencil" aria-hidden="true"></i>
+                      </button>
+                      <button className="lease-link-btn" onClick={() => handleDelete(l.id)} title="Delete" style={{ marginLeft: 8 }}>
+                        <i className="bi bi-trash" aria-hidden="true"></i>
+                      </button>
                     </td>
                   </tr>
                 ))}
                 {filtered.length === 0 && !loading && (
                   <tr>
-                    <td colSpan={10} className="lease-empty-state">No lease agreements found.</td>
+                    <td colSpan={11} className="lease-empty-state">No lease agreements found.</td>
                   </tr>
                 )}
               </tbody>

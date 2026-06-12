@@ -3,6 +3,7 @@ export interface CreateLeaseDTO {
   tenant:              string;
   landlord:            string;
   property:            string;
+  propertyId?:         number;
   propertyUnit?:       string;
   propertyType?:       string;
   propertyAddress?:    string;
@@ -16,12 +17,21 @@ export interface CreateLeaseDTO {
   rentDueDay?:         number;
   paymentMode?:        string;
   increasePercentage?: number;
+  leaseValueAmount?:   number;
+  advanceAmount?:      number;
+  delayPenaltyAmount?: number;
+  petsAllowed?:        boolean;
+  userIdentifier?:     string;
+  customerIdentifier?: string;
   terms?:              string;
   notes?:              string;
   autoRenewal?:        boolean;
   userId:              number;
+  customerId:          number;
 }
 
 export interface UpdateLeaseDTO extends Partial<CreateLeaseDTO> {
   status?: "Active" | "Expired" | "Terminated" | "Renewal Pending";
+  customerId?: number;
+  propertyId?: number;
 }

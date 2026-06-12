@@ -5,8 +5,13 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   BeforeInsert,
+  ManyToOne,
+  JoinColumn,
 } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
+import { Customer } from "./Customer";
+import { User } from "./User";
+import { Property } from "./Property";
 
 @Entity("lease_agreements")
 export class LeaseAgreement {
@@ -26,6 +31,13 @@ export class LeaseAgreement {
   property!: string;
 
   @Column({ nullable: true })
+  propertyId!: number;
+
+  @ManyToOne(() => Property, { nullable: true })
+  @JoinColumn({ name: "propertyId" })
+  propertyRef?: Property;
+
+  @Column({ nullable: true })
   propertyUnit!: string;
 
   @Column({ nullable: true })
@@ -33,6 +45,9 @@ export class LeaseAgreement {
 
   @Column({ type: "text", nullable: true })
   propertyAddress!: string;
+
+  @Column({ nullable: true })
+  customerName!: string;
 
   @Column({ type: "date" })
   startDate!: string;
@@ -42,6 +57,12 @@ export class LeaseAgreement {
 
   @Column({ default: "12" })
   leaseTerm!: string;
+
+  @Column("decimal", { precision: 12, scale: 2, nullable: true })
+  leaseValueAmount!: number;
+
+  @Column("decimal", { precision: 12, scale: 2, nullable: true })
+  advanceAmount!: number;
 
   @Column("decimal", { precision: 10, scale: 2 })
   monthlyRent!: number;
@@ -70,6 +91,9 @@ export class LeaseAgreement {
   @Column({ type: "int", default: 0 })
   increasePercentage!: number;
 
+  @Column("decimal", { precision: 12, scale: 2, nullable: true })
+  delayPenaltyAmount!: number;
+
   @Column({ type: "text", nullable: true })
   terms!: string;
 
@@ -79,11 +103,31 @@ export class LeaseAgreement {
   @Column({ default: false })
   autoRenewal!: boolean;
 
+  @Column({ default: false })
+  petsAllowed!: boolean;
+
   @Column("json", { nullable: true })
   docs!: { name: string; url?: string; type?: string; uploadedAt?: string }[];
 
   @Column()
+  customerId!: number;
+
+  @ManyToOne(() => Customer, { nullable: true })
+  @JoinColumn({ name: "customerId" })
+  customer?: Customer;
+
+  @Column()
   userId!: number;
+
+  @Column({ nullable: true })
+  userIdentifier?: string;
+
+  @Column({ nullable: true })
+  customerIdentifier?: string;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: "userId" })
+  user?: User;
 
   @CreateDateColumn()
   createdAt!: Date;

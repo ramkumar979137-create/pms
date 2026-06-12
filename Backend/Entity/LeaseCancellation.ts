@@ -37,8 +37,17 @@ export class LeaseCancellation {
   @Column({ type: "text" })
   reason!: string;
 
-  @Column("decimal", { precision: 10, scale: 2, default: 0 })
-  penaltyAmount!: number;
+  @Column("decimal", { precision: 14, scale: 2, nullable: true })
+  leaseValueAmount!: number | null;
+
+  @Column("decimal", { precision: 14, scale: 2, nullable: true })
+  advanceAmount!: number | null;
+
+  @Column("decimal", { precision: 10, scale: 2, nullable: true })
+  delayPenaltyAmount!: number | null;
+
+  @Column("decimal", { precision: 10, scale: 2, nullable: true })
+  penaltyAmount!: number | null;
 
   @Column({ default: "Pending" })
   status!: string;
@@ -46,8 +55,29 @@ export class LeaseCancellation {
   @Column("json", { nullable: true })
   docs!: { name: string; url?: string; type?: string; uploadedAt?: string }[];
 
-  @Column()
-  userId!: number;
+  @Column({ nullable: true })
+  customerId!: number | null;
+
+  @Column({ nullable: true })
+  customerName!: string | null;
+
+  @Column({ nullable: true })
+  propertyId!: number | null;
+
+  @Column({ nullable: true })
+  propertyAddress!: string | null;
+
+  @Column({ nullable: true })
+  userId!: number | null;
+
+  @Column({ nullable: true })
+  userIdentifier!: string | null;
+
+  @Column({ nullable: true })
+  customerIdentifier!: string | null;
+
+  @Column({ default: false })
+  petsAllowed!: boolean;
 
   @CreateDateColumn()
   createdAt!: Date;

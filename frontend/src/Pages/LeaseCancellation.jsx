@@ -2,7 +2,8 @@
 // AUM Sol Corp PMS — Lease Cancellation Module
 // Design: matches existing PMS style (cream bg, white card, navy table, gold accents)
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import axios from 'axios'
 import '../Css/LeaseCancellation.css'
 
 /* ─────────────────────────────────────
@@ -27,31 +28,11 @@ const STATUSES = ['Cancelled', 'Pending Approval', 'Disputed']
 /* ─────────────────────────────────────
    Seed Leases (mock active leases)
 ───────────────────────────────────── */
-const ACTIVE_LEASES = [
-  {
-    id: 'LSE-001',
-    customer: 'Ravi Krishnan',
-    property: '12 Anna Nagar, Chennai',
-    leaseStart: '2024-01-01',
-    leaseEnd: '2025-12-31',
-    value: 480000,
-  },
-  {
-    id: 'LSE-002',
-    customer: 'Priya Sundaram',
-    property: '45 T Nagar, Chennai',
-    leaseStart: '2024-03-15',
-    leaseEnd: '2025-03-14',
-    value: 360000,
-  },
-  {
-    id: 'LSE-003',
-    customer: 'Aarav Mehta',
-    property: '78 Velachery, Chennai',
-    leaseStart: '2024-06-01',
-    leaseEnd: '2026-05-31',
-    value: 300000,
-  },
+// Active leases will be fetched from the backend; keep the seed as fallback
+let ACTIVE_LEASES = [
+  { id: 'LSE-001', customer: 'Ravi Krishnan', property: '12 Anna Nagar, Chennai', leaseStart: '2024-01-01', leaseEnd: '2025-12-31', value: 480000 },
+  { id: 'LSE-002', customer: 'Priya Sundaram', property: '45 T Nagar, Chennai', leaseStart: '2024-03-15', leaseEnd: '2025-03-14', value: 360000 },
+  { id: 'LSE-003', customer: 'Aarav Mehta', property: '78 Velachery, Chennai', leaseStart: '2024-06-01', leaseEnd: '2026-05-31', value: 300000 },
 ]
 
 /* ─────────────────────────────────────
@@ -75,7 +56,6 @@ function blankForm(id) {
     cancelDate: today(),
     leaseId: '',
     customer: '',
-    property: '',
     leaseStart: '',
     leaseEnd: '',
     leaseValue: '',
@@ -106,13 +86,13 @@ const statusClass = s => {
 }
 
 /* ─────────────────────────────────────
-   Modal Form
+  Modal Form
 ───────────────────────────────────── */
-function CancellationForm({ form, onChange }) {
+function CancellationForm({ form, onChange, activeLeases }) {
   const set = (k, v) => onChange({ ...form, [k]: v })
-
+  
   const handleLeaseSelect = leaseId => {
-    const lease = ACTIVE_LEASES.find(l => l.id === leaseId)
+    const lease = (activeLeases || []).find(l => l.id === leaseId)
     if (lease) {
       onChange({
         ...form,
@@ -164,7 +144,7 @@ function CancellationForm({ form, onChange }) {
           onChange={e => handleLeaseSelect(e.target.value)}
         >
           <option value="">— Select active lease —</option>
-          {ACTIVE_LEASES.map(l => (
+          {activeLeases.map(l => (
             <option key={l.id} value={l.id}>
               {l.id} — {l.customer} · {l.property}
             </option>
@@ -272,7 +252,7 @@ function CancellationForm({ form, onChange }) {
 /* ─────────────────────────────────────
    Modal — inline (no createPortal)
 ───────────────────────────────────── */
-function CancellationModal({ form, onChange, onClose, onSave }) {
+function CancellationModal({ form, onChange, onClose, onSave, activeLeases }) {
   const handleSave = () => {
     if (!form.leaseId || !form.cancelDate) {
       alert('Lease and Cancellation Date are required.')
@@ -295,7 +275,7 @@ function CancellationModal({ form, onChange, onClose, onSave }) {
         </div>
 
         <div className="lcModalBody">
-          <CancellationForm form={form} onChange={onChange} />
+          <CancellationForm form={form} onChange={onChange} activeLeases={activeLeases} />
         </div>
 
         <div className="lcModalFooter">
@@ -314,6 +294,7 @@ function CancellationModal({ form, onChange, onClose, onSave }) {
 export default function LeaseCancellationModule() {
   const [records, setRecords] = useState([])
   const [modal, setModal]     = useState(null) // null | { form }
+  const [activeLeases, setActiveLeases] = useState(ACTIVE_LEASES)
 
   const openNew    = ()   => setModal({ form: blankForm(nextId(records)) })
   const closeModal = ()   => setModal(null)
@@ -323,6 +304,29 @@ export default function LeaseCancellationModule() {
     setRecords(prev => [...prev, form])
     closeModal()
   }
+
+  useEffect(() => {
+    const fetchActiveLeases = async () => {
+      try {
+        const res = await axios.get('http://localhost:5000/api/lease-agreements?status=Active&limit=200')
+        const items = Array.isArray(res.data.leases) ? res.data.leases : Array.isArray(res.data) ? res.data : []
+        // map to the simple shape used by this module
+        const mapped = items.map(l => ({
+          id: l.leaseId || `LSE-${String(l.id).padStart(3, '0')}`,
+          customer: l.customerName || l.tenant || '',
+          property: l.propertyAddress || l.property || '',
+          leaseStart: l.startDate || '',
+          leaseEnd: l.endDate || '',
+          value: l.leaseValueAmount || l.monthlyRent || 0,
+        }))
+        if (mapped.length > 0) setActiveLeases(mapped)
+      } catch (err) {
+        // leave fallback ACTIVE_LEASES in place
+        console.debug('Failed to load active leases for cancellations, using fallback', err)
+      }
+    }
+    fetchActiveLeases()
+  }, [])
 
   const handleDelete = id => {
     if (window.confirm(`Delete record ${id}?`))
@@ -433,6 +437,7 @@ export default function LeaseCancellationModule() {
           onChange={updateForm}
           onClose={closeModal}
           onSave={handleSave}
+          activeLeases={activeLeases}
         />
       )}
 

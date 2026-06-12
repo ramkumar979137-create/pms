@@ -510,9 +510,11 @@ export default function Properties() {
                   </td>
                 </tr>
               ) : (
-                properties.map((property) => (
+                properties.map((property, idx) => {
+                  const rowIndex = (currentPage - 1) * PAGE_SIZE + idx + 1;
+                  return (
                   <tr key={property.id}>
-                    <td className="id-cell">{property.id}</td>
+                    <td className="id-cell">{rowIndex}</td>
                     <td>{property.name}</td>
                     <td>
                       <span className={`badge badge-${property.type.toLowerCase()}`}>
@@ -538,7 +540,8 @@ export default function Properties() {
                       </div>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>

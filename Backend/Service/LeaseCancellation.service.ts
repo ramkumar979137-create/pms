@@ -33,7 +33,14 @@ export const createLeaseCancellation = async (
   const savedDocs = saveFiles(files);
   const cancellation = repo.create({
     ...data,
-    penaltyAmount: Number(data.penaltyAmount) || 0,
+    leaseValueAmount: data.leaseValueAmount !== undefined && data.leaseValueAmount !== null ? Number(data.leaseValueAmount) : null,
+    advanceAmount: data.advanceAmount !== undefined && data.advanceAmount !== null ? Number(data.advanceAmount) : null,
+    delayPenaltyAmount: data.delayPenaltyAmount !== undefined && data.delayPenaltyAmount !== null ? Number(data.delayPenaltyAmount) : null,
+    penaltyAmount: data.penaltyAmount !== undefined && data.penaltyAmount !== null ? Number(data.penaltyAmount) : null,
+    customerId: data.customerId !== undefined && data.customerId !== null ? Number(data.customerId) : null,
+    propertyId: data.propertyId !== undefined && data.propertyId !== null ? Number(data.propertyId) : null,
+    userId: data.userId !== undefined && data.userId !== null ? Number(data.userId) : null,
+    petsAllowed: !!data.petsAllowed,
     status: data.status || "Pending",
     docs: savedDocs,
   });
@@ -69,7 +76,14 @@ export const updateLeaseCancellation = async (
   cancellation.docs = [...(cancellation.docs || []), ...newDocs];
   const updatedFields: Partial<LeaseCancellation> = {
     ...data,
-    penaltyAmount: data.penaltyAmount !== undefined ? Number(data.penaltyAmount) : cancellation.penaltyAmount,
+    leaseValueAmount: data.leaseValueAmount !== undefined && data.leaseValueAmount !== null ? Number(data.leaseValueAmount) : cancellation.leaseValueAmount,
+    advanceAmount: data.advanceAmount !== undefined && data.advanceAmount !== null ? Number(data.advanceAmount) : cancellation.advanceAmount,
+    delayPenaltyAmount: data.delayPenaltyAmount !== undefined && data.delayPenaltyAmount !== null ? Number(data.delayPenaltyAmount) : cancellation.delayPenaltyAmount,
+    penaltyAmount: data.penaltyAmount !== undefined && data.penaltyAmount !== null ? Number(data.penaltyAmount) : cancellation.penaltyAmount,
+    customerId: data.customerId !== undefined && data.customerId !== null ? Number(data.customerId) : cancellation.customerId,
+    propertyId: data.propertyId !== undefined && data.propertyId !== null ? Number(data.propertyId) : cancellation.propertyId,
+    userId: data.userId !== undefined && data.userId !== null ? Number(data.userId) : cancellation.userId,
+    petsAllowed: typeof data.petsAllowed === 'boolean' ? data.petsAllowed : cancellation.petsAllowed,
     status: data.status || cancellation.status,
   };
   Object.assign(cancellation, updatedFields);
