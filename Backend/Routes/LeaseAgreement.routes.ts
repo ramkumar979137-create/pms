@@ -8,6 +8,7 @@ import {
   update,
   removeDoc,
   remove,
+  getMyActive,
 } from "../Controller/LeaseAgreement.controller";
 
 const router = Router();
@@ -42,6 +43,9 @@ router.post(   "/",          upload.array("docs", 10), create);
 
 // GET    /api/lease-agreements          → get all (?status=Active&tenant=name)
 router.get(    "/",          getAll);
+
+// GET    /api/lease-agreements/mine     → get active leases for current user
+router.get(    "/mine",      getMyActive);
 
 // GET    /api/lease-agreements/:id      → get one
 router.get(    "/:id",       getOne);

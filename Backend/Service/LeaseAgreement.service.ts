@@ -44,106 +44,176 @@ export const createLease = async (
 ): Promise<LeaseAgreement> => {
 
   const savedDocs = saveFiles(files);
-  // Helpers to coerce incoming values
+
   const toNumber = (v: any, fallback?: number) => {
     if (v === null || v === undefined || v === "") return fallback;
     const n = Number(v);
     return Number.isFinite(n) ? n : fallback;
   };
+
   const toBoolean = (v: any) => {
     if (typeof v === 'boolean') return v;
     if (v === 'true' || v === '1' || v === 1) return true;
     return false;
   };
 
-  // Basic validation for required fields
-  // `tenant` is optional because frontend sends `customerId`/`customerName` instead.
-  // Default tenant to customerName when available to keep readable records.
+  // Validation
   if (!data.startDate) throw new Error('Missing startDate');
   if (!data.endDate) throw new Error('Missing endDate');
 
-  // Normalize/validate leaseTerm
+  // Normalize lease term
   const rawLeaseTerm = (data as any).leaseTerm;
   let normalizedLeaseTerm = "12";
-  if (rawLeaseTerm !== null && rawLeaseTerm !== undefined && String(rawLeaseTerm).trim() !== "") {
+
+  if (
+    rawLeaseTerm !== null &&
+    rawLeaseTerm !== undefined &&
+    String(rawLeaseTerm).trim() !== ""
+  ) {
     const nlt = Number(rawLeaseTerm);
-    normalizedLeaseTerm = Number.isFinite(nlt) && nlt > 0 ? String(Math.floor(nlt)) : "12";
+    normalizedLeaseTerm =
+      Number.isFinite(nlt) && nlt > 0
+        ? String(Math.floor(nlt))
+        : "12";
   }
 
-  // Parse numeric monetary fields but keep them nullable when not provided
-  const parsedLeaseValue = toNumber((data as any).leaseValueAmount, undefined);
-  const parsedAdvance = toNumber((data as any).advanceAmount, undefined);
-  const parsedDelayPenalty = toNumber((data as any).delayPenaltyAmount, undefined);
+  // Parse monetary values
+  const parsedLeaseValue = toNumber(
+    (data as any).leaseValueAmount,
+    undefined
+  );
 
-  // Reject negative monetary values as invalid input
-  if (typeof parsedLeaseValue === 'number' && parsedLeaseValue < 0) throw new Error('Invalid leaseValueAmount');
-  if (typeof parsedAdvance === 'number' && parsedAdvance < 0) throw new Error('Invalid advanceAmount');
-  if (typeof parsedDelayPenalty === 'number' && parsedDelayPenalty < 0) throw new Error('Invalid delayPenaltyAmount');
+  const parsedAdvance = toNumber(
+    (data as any).advanceAmount,
+    undefined
+  );
+
+  const parsedDelayPenalty = toNumber(
+    (data as any).delayPenaltyAmount,
+    undefined
+  );
+
+  // Validation
+  if (
+    typeof parsedLeaseValue === "number" &&
+    parsedLeaseValue < 0
+  ) {
+    throw new Error("Invalid leaseValueAmount");
+  }
+
+  if (
+    typeof parsedAdvance === "number" &&
+    parsedAdvance < 0
+  ) {
+    throw new Error("Invalid advanceAmount");
+  }
+
+  if (
+    typeof parsedDelayPenalty === "number" &&
+    parsedDelayPenalty < 0
+  ) {
+    throw new Error("Invalid delayPenaltyAmount");
+  }
 
   const leasePayload: any = {
     ...data,
-    tenant: (data as any).tenant ?? (data as any).customerName ?? "",
-    customerName: (data as any).customerName ?? "",
+
+    tenant:
+      (data as any).tenant ??
+      (data as any).customerName ??
+      "",
+
+    customerName:
+      (data as any).customerName ??
+      "",
+
     leaseTerm: normalizedLeaseTerm,
-    monthlyRent: toNumber((data as any).monthlyRent, 0),
-    securityDeposit: toNumber((data as any).securityDeposit, 0),
-    maintenanceCharge: toNumber((data as any).maintenanceCharge, 0),
-    utilityCharge: toNumber((data as any).utilityCharge, 0),
+
+    monthlyRent: toNumber(
+      (data as any).monthlyRent,
+      0
+    ),
+
+    securityDeposit: toNumber(
+      (data as any).securityDeposit,
+      0
+    ),
+
+    maintenanceCharge: toNumber(
+      (data as any).maintenanceCharge,
+      0
+    ),
+
+    utilityCharge: toNumber(
+      (data as any).utilityCharge,
+      0
+    ),
+
     leaseValueAmount: parsedLeaseValue,
+
     advanceAmount: parsedAdvance,
+
     delayPenaltyAmount: parsedDelayPenalty,
-    increasePercentage: toNumber((data as any).increasePercentage, 0),
-    rentDueDay: toNumber((data as any).rentDueDay, 1),
-    customerId: toNumber((data as any).customerId),
-    propertyId: toNumber((data as any).propertyId),
-    userId: toNumber((data as any).userId),
-    autoRenewal: toBoolean((data as any).autoRenewal),
-    petsAllowed: toBoolean((data as any).petsAllowed),
+
+    increasePercentage: toNumber(
+      (data as any).increasePercentage,
+      0
+    ),
+
+    rentDueDay: toNumber(
+      (data as any).rentDueDay,
+      1
+    ),
+
+    // keep identifiers as provided (may be string IDs like CUS_xxx)
+    customerId: (data as any).customerId,
+
+    propertyId: toNumber(
+      (data as any).propertyId
+    ),
+
+    // keep identifiers as provided (may be string IDs like USR_xxx)
+    userId: (data as any).userId,
+
+    autoRenewal: toBoolean(
+      (data as any).autoRenewal
+    ),
+
+    petsAllowed: toBoolean(
+      (data as any).petsAllowed
+    ),
+
     docs: savedDocs,
   };
 
-  // Resolve and include identifier strings (USR_xxx, CUS_xxx) when possible
-  if (!leasePayload.userIdentifier) {
-    // if numeric userId is present, try to fetch the userIdentifier
-    if (leasePayload.userId) {
-      try {
-        const userRepo = AppDataSource.getRepository(User);
-        const u = await userRepo.findOne({ where: { id: leasePayload.userId } });
-        if (u && (u as any).userId) leasePayload.userIdentifier = (u as any).userId;
-      } catch (e) {
-        // ignore lookup failures
-      }
-    }
-  }
-  if (!leasePayload.customerIdentifier) {
-    if (leasePayload.customerId) {
-      try {
-        const custRepo = AppDataSource.getRepository(Customer);
-        const c = await custRepo.findOne({ where: { id: leasePayload.customerId } });
-        if (c && (c as any).customerId) leasePayload.customerIdentifier = (c as any).customerId;
-      } catch (e) {
-        // ignore lookup failures
-      }
-    }
-  }
-
   const lease = repo.create(leasePayload);
-  // repo.save may return the entity or an array (depending on input), normalize to a single object
-  let savedResult: any = await repo.save(lease);
-  let savedLease: any = Array.isArray(savedResult) ? savedResult[0] : savedResult;
 
-  // Generate a human-friendly sequential leaseId like LSE-001 using the DB id
+  let savedResult: any = await repo.save(lease);
+
+  let savedLease: any = Array.isArray(savedResult)
+    ? savedResult[0]
+    : savedResult;
+
+  // Generate Lease ID
   try {
     const generated = `LSE-${String(savedLease.id).padStart(3, "0")}`;
-    if (!savedLease.leaseId || savedLease.leaseId !== generated) {
+
+    if (
+      !savedLease.leaseId ||
+      savedLease.leaseId !== generated
+    ) {
       savedLease.leaseId = generated;
       savedResult = await repo.save(savedLease);
     }
   } catch (err) {
-    // ignore leaseId generation errors and return the saved entity
+    // Ignore leaseId generation errors
   }
 
-  return (Array.isArray(savedResult) ? savedResult[0] : savedResult) as LeaseAgreement;
+  return (
+    Array.isArray(savedResult)
+      ? savedResult[0]
+      : savedResult
+  ) as LeaseAgreement;
 };
 
 /* ──────────────────────────────────────
@@ -155,8 +225,8 @@ export const getAllLeases = async (filters: {
   landlord?: string;
   property?: string;
   propertyId?: number;
-  customerId?: number;
-  userId?: number;
+  customerId?: number | string;
+  userId?: number | string;
 }): Promise<LeaseAgreement[]> => {
 
   const qb = repo.createQueryBuilder("l");
@@ -166,8 +236,14 @@ export const getAllLeases = async (filters: {
   if (filters.landlord) qb.andWhere("l.landlord LIKE :landlord", { landlord:  `%${filters.landlord}%` });
   if (filters.property) qb.andWhere("l.property LIKE :prop",   { prop:    `%${filters.property}%` });
   if (typeof filters.propertyId !== "undefined") qb.andWhere("l.propertyId = :propertyId", { propertyId: filters.propertyId });
-  if (typeof filters.customerId !== "undefined") qb.andWhere("l.customerId = :customerId", { customerId: filters.customerId });
-  if (typeof filters.userId !== "undefined") qb.andWhere("l.userId = :userId", { userId: filters.userId });
+  if (typeof filters.customerId !== "undefined") {
+    const cid = typeof filters.customerId === "number" ? String(filters.customerId) : filters.customerId;
+    qb.andWhere("l.customerId = :customerId", { customerId: cid });
+  }
+  if (typeof filters.userId !== "undefined") {
+    const uid = typeof filters.userId === "number" ? String(filters.userId) : filters.userId;
+    qb.andWhere("l.userId = :userId", { userId: uid });
+  }
 
   return await qb.orderBy("l.createdAt", "DESC").getMany();
 };
@@ -215,9 +291,9 @@ export const updateLease = async (
   if (typeof (data as any).delayPenaltyAmount !== 'undefined') cleaned.delayPenaltyAmount = toNumber((data as any).delayPenaltyAmount, (lease as any).delayPenaltyAmount);
   if (typeof (data as any).increasePercentage !== 'undefined') cleaned.increasePercentage = toNumber((data as any).increasePercentage, lease.increasePercentage);
   if (typeof (data as any).rentDueDay !== 'undefined') cleaned.rentDueDay = toNumber((data as any).rentDueDay, lease.rentDueDay);
-  if (typeof (data as any).customerId !== 'undefined') cleaned.customerId = toNumber((data as any).customerId, lease.customerId);
+  if (typeof (data as any).customerId !== 'undefined') cleaned.customerId = (data as any).customerId;
   if (typeof (data as any).propertyId !== 'undefined') cleaned.propertyId = toNumber((data as any).propertyId, lease.propertyId);
-  if (typeof (data as any).userId !== 'undefined') cleaned.userId = toNumber((data as any).userId, lease.userId);
+  if (typeof (data as any).userId !== 'undefined') cleaned.userId = (data as any).userId;
   if (typeof (data as any).autoRenewal !== 'undefined') cleaned.autoRenewal = toBoolean((data as any).autoRenewal);
   if (typeof (data as any).petsAllowed !== 'undefined') cleaned.petsAllowed = toBoolean((data as any).petsAllowed);
 

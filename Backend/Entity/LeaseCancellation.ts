@@ -55,25 +55,25 @@ export class LeaseCancellation {
   @Column("json", { nullable: true })
   docs!: { name: string; url?: string; type?: string; uploadedAt?: string }[];
 
-  @Column({ nullable: true })
+  @Column({ type: "int", nullable: true })
   customerId!: number | null;
 
-  @Column({ nullable: true })
+  @Column({ type: "varchar", length: 255, nullable: true })
   customerName!: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: "int", nullable: true })
   propertyId!: number | null;
 
-  @Column({ nullable: true })
+  @Column({ type: "varchar", length: 500, nullable: true })
   propertyAddress!: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: "int", nullable: true })
   userId!: number | null;
 
-  @Column({ nullable: true })
+  @Column({ type: "varchar", length: 255, nullable: true })
   userIdentifier!: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: "varchar", length: 255, nullable: true })
   customerIdentifier!: string | null;
 
   @Column({ default: false })

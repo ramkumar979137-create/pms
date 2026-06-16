@@ -1,14 +1,14 @@
 import { AppDataSource } from "../config/data-source";
 import { Property } from "../Entity/Property";
 import { LeaseAgreement } from "../Entity/LeaseAgreement";
-import { Rentalagreement } from "../Entity/Rentalagreement";
+import { RentalAgreement } from "../Entity/Rentalagreement";
 import { Vendor } from "../Entity/Vendor";
 import { LeaseCancellation } from "../Entity/LeaseCancellation";
 
 export const getDashboardData = async () => {
   const propRepo = AppDataSource.getRepository(Property);
   const leaseRepo = AppDataSource.getRepository(LeaseAgreement);
-  const rentalRepo = AppDataSource.getRepository(Rentalagreement);
+  const rentalRepo = AppDataSource.getRepository(RentalAgreement);
   const vendorRepo = AppDataSource.getRepository(Vendor);
   const lcRepo = AppDataSource.getRepository(LeaseCancellation);
 

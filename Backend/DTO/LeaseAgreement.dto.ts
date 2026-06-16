@@ -21,17 +21,15 @@ export interface CreateLeaseDTO {
   advanceAmount?:      number;
   delayPenaltyAmount?: number;
   petsAllowed?:        boolean;
-  userIdentifier?:     string;
-  customerIdentifier?: string;
   terms?:              string;
   notes?:              string;
   autoRenewal?:        boolean;
-  userId:              number;
-  customerId:          number;
+  userId:              number | string;
+  customerId:          number | string;
 }
 
 export interface UpdateLeaseDTO extends Partial<CreateLeaseDTO> {
   status?: "Active" | "Expired" | "Terminated" | "Renewal Pending";
-  customerId?: number;
+  customerId?: number | string;
   propertyId?: number;
 }

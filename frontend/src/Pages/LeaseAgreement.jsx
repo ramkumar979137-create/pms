@@ -30,8 +30,7 @@ const emptyForm = {
   delayPenaltyCurrency: "₹ INR",
   delayPenaltyAmount: "",
   status: "Active",
-  userId: 1,
-  userIdentifier: "",
+  userId: "",
   petsAllowed: false,
 };
 
@@ -132,16 +131,16 @@ export default function LeaseAgreement() {
     return arr;
   })();
   const handleCustomerSelect = (customerId) => {
+   
     // customerId may come as string from the select; normalize to number when possible
     const id = customerId === "" ? "" : Number(customerId);
+
     const customer = displayedCustomers.find(c => (typeof c.id === "number" ? c.id === id : String(c.id) === String(customerId)));
     setForm(prev => ({
       ...prev,
       customerId: customer ? customer.id : "",
-      customerIdentifier: customer ? customer.customerId || "" : "",
       customerName: customer ? customer.name : "",
-      userId: customer && typeof customer.createdByUserId === 'number' ? customer.createdByUserId : prev.userId,
-      userIdentifier: customer && typeof customer.createdByUserId === 'string' ? customer.createdByUserId : prev.userIdentifier,
+      userId: customer && typeof customer.createdByUserId === 'string' ? customer.createdByUserId : prev.userIdentifier,
     }));
     console.log("Selected customer:", customer, "from ID:", customerId);
   };
@@ -232,12 +231,10 @@ export default function LeaseAgreement() {
       });
 
       // append identifiers from logged-in user when available
-      if (user && typeof user.id !== "undefined" && Number.isFinite(Number(user.id))) {
-        fd.append("userId", String(user.id));
-      }
       if (user && typeof user.userId !== "undefined") {
-        fd.append("userIdentifier", String(user.userId));
+        fd.append("userId", String(user.userId));
       }
+     
 
       // Note: form may also contain `userIdentifier` populated from selected customer; form entries were appended above.
 
@@ -250,6 +247,7 @@ export default function LeaseAgreement() {
       if (editingId) {
         await axios.put(`${API}/${editingId}`, fd, { headers });
       } else {
+        console.log(fd)
         await axios.post(API, fd, { headers });
       }
 
@@ -266,7 +264,7 @@ export default function LeaseAgreement() {
   };
 
   const handleEdit = (lease) => {
-    const selectedCustomer = customers.find(c => c.id === lease.customerId) || currentCustomers.find(c => c.id === lease.customerId);
+    const selectedCustomer = customers.find(c => c.customerId === lease.customerId) || currentCustomers.find(c => c.customerId === lease.customerId);
     const selectedProperty = properties.find(p => p.id === lease.propertyId) || currentProperties.find(p => p.id === lease.propertyId);
     setForm({
       customerId: lease.customerId || "",

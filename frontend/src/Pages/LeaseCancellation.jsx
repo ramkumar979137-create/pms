@@ -308,10 +308,47 @@ export default function LeaseCancellationModule() {
   useEffect(() => {
     const fetchActiveLeases = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/lease-agreements?status=Active&limit=200')
+        const apiBase = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
+
+        const storedUser = localStorage.getItem('pms_user')
+        const parsedUser = storedUser ? JSON.parse(storedUser) : {}
+        const token = parsedUser?.token
+
+        // Try the authenticated /mine endpoint first when token available
+        if (token) {
+          try {
+            const res = await axios.get(`${apiBase}/api/lease-agreements/mine`, { headers: { Authorization: `Bearer ${token}` } })
+            const items = Array.isArray(res.data.leases) ? res.data.leases : Array.isArray(res.data) ? res.data : []
+            const mapped = items.map(l => ({
+              id: l.id,
+              customer: l.customer,
+              property: l.property,
+              leaseStart: l.leaseStart || '',
+              leaseEnd: l.leaseEnd || '',
+              value: l.value || 0,
+            }))
+            setActiveLeases(mapped)
+            return
+          } catch (err) {
+            // If unauthorized or other error, fall through to public fetch fallback
+            console.debug('/mine fetch failed, falling back to public fetch', err)
+          }
+        }
+
+        // Fallback: fetch public list and filter client-side (used when no token)
+        const res = await axios.get(`${apiBase}/api/lease-agreements?status=Active&limit=200`)
         const items = Array.isArray(res.data.leases) ? res.data.leases : Array.isArray(res.data) ? res.data : []
-        // map to the simple shape used by this module
-        const mapped = items.map(l => ({
+
+        // only show leases belonging to the currently logged-in user (based on parsedUser)
+        const matchesUser = (lease) => {
+          if (parsedUser?.role === 'admin') return true
+          if (typeof lease.userId !== 'undefined' && parsedUser?.id && Number(lease.userId) === Number(parsedUser.id)) return true
+          if (lease.userIdentifier && parsedUser?.userId && lease.userIdentifier === parsedUser.userId) return true
+          return false
+        }
+
+        const filtered = items.filter(matchesUser)
+        const mapped = filtered.map(l => ({
           id: l.leaseId || `LSE-${String(l.id).padStart(3, '0')}`,
           customer: l.customerName || l.tenant || '',
           property: l.propertyAddress || l.property || '',
@@ -319,7 +356,7 @@ export default function LeaseCancellationModule() {
           leaseEnd: l.endDate || '',
           value: l.leaseValueAmount || l.monthlyRent || 0,
         }))
-        if (mapped.length > 0) setActiveLeases(mapped)
+        setActiveLeases(mapped)
       } catch (err) {
         // leave fallback ACTIVE_LEASES in place
         console.debug('Failed to load active leases for cancellations, using fallback', err)

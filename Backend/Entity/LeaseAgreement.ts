@@ -110,20 +110,20 @@ export class LeaseAgreement {
   docs!: { name: string; url?: string; type?: string; uploadedAt?: string }[];
 
   @Column()
-  customerId!: number;
+  customerId!: string;
 
   @ManyToOne(() => Customer, { nullable: true })
   @JoinColumn({ name: "customerId" })
   customer?: Customer;
 
   @Column()
-  userId!: number;
+  userId!: string;
 
-  @Column({ nullable: true })
-  userIdentifier?: string;
+  // @Column({ nullable: true })
+  // userIdentifier?: string;
 
-  @Column({ nullable: true })
-  customerIdentifier?: string;
+  // @Column({ nullable: true })
+  // customerIdentifier?: string;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: "userId" })
