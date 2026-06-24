@@ -135,10 +135,10 @@ export default function LeaseAgreement() {
     // customerId may come as string from the select; normalize to number when possible
     const id = customerId === "" ? "" : Number(customerId);
 
-    const customer = displayedCustomers.find(c => (typeof c.id === "number" ? c.id === id : String(c.id) === String(customerId)));
+    const customer = displayedCustomers.find(c => (c.customerId ==customerId));
     setForm(prev => ({
       ...prev,
-      customerId: customer ? customer.id : "",
+      customerId: customer ? customer.customerId : "",
       customerName: customer ? customer.name : "",
       userId: customer && typeof customer.createdByUserId === 'string' ? customer.createdByUserId : prev.userIdentifier,
     }));
@@ -394,13 +394,13 @@ export default function LeaseAgreement() {
                   <label>Customer *</label>
                   <select required value={form.customerId} onChange={e => handleCustomerSelect(e.target.value)}>
                     <option value="">— Select Customer —</option>
-                    {displayedCustomers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {displayedCustomers.map(c => <option key={c.customerId} value={c.customerId}>{c.name}</option>)}
                   </select>
                 </div>
-                <div className="field-group">
+                {/* <div className="field-group">
                   <label>Customer Name</label>
                   <input value={form.customerName} placeholder="Customer name" readOnly />
-                </div>
+                </div> */}
               </div>
               <div className="lease-grid-4">
                 <div className="field-group">
@@ -416,7 +416,7 @@ export default function LeaseAgreement() {
                 </div>
                 <div className="field-group form-full">
                   <label>Property Address</label>
-                  <textarea value={form.propertyAddress} onChange={e => setForm({ ...form, propertyAddress: e.target.value })} placeholder="Full property address" />
+                  <textarea readOnly value={form.propertyAddress} onChange={e => setForm({ ...form, propertyAddress: e.target.value })} placeholder="Full property address" />
                 </div>
               </div>
             </div>

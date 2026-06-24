@@ -33,30 +33,27 @@ const upload = multer({
   },
 });
 
-/* ─────────────────────────────────
-   Routes
-   Base: /api/lease-agreements
-───────────────────────────────── */
 
-// POST   /api/lease-agreements          → create (with file upload)
-router.post(   "/",          upload.array("docs", 10), create);
 
-// GET    /api/lease-agreements          → get all (?status=Active&tenant=name)
-router.get(    "/",          getAll);
+// POST   /apilease-agreements        
+router.post("/", upload.array("docs", 10), create);
+
+// GET    /api/lease-agreements        
+router.get( "/",getAll);
 
 // GET    /api/lease-agreements/mine     → get active leases for current user
-router.get(    "/mine",      getMyActive);
+router.get("/mine",getMyActive);
 
 // GET    /api/lease-agreements/:id      → get one
-router.get(    "/:id",       getOne);
+router.get("/:id",getOne);
 
 // PUT    /api/lease-agreements/:id      → update (with optional new files)
-router.put(    "/:id",       upload.array("docs", 10), update);
+router.put("/:id",upload.array("docs", 10), update);
 
 // DELETE /api/lease-agreements/:id/doc → remove one document
-router.delete( "/:id/doc",   removeDoc);
+router.delete("/:id/doc",removeDoc);
 
 // DELETE /api/lease-agreements/:id     → delete lease
-router.delete( "/:id",       remove);
+router.delete("/:id",remove);
 
 export default router;

@@ -188,12 +188,12 @@ export default function Vendors() {
             <p className="vendors-modal-subtitle">Fill in vendor details for invoice and service tracking.</p>
             <form id="vendor-form" className="vendors-modal-form" onSubmit={handleSubmit}>
               <div className="vendors-modal-grid">
-                <label className="vendors-full-width">
+                {/* <label className="vendors-full-width">
                   Vendor ID
                   <input disabled value={editingId ? form.vendorCode || "" : "Auto-generated"} />
-                </label>
+                </label> */}
                 <label>
-                  Vendor Name <span>*</span>
+                  Vendor Name *
                   <input required value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} />
                 </label>
                 <label>

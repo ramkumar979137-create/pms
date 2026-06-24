@@ -1,35 +1,69 @@
 // DTO/LeaseAgreement.dto.ts
-export interface CreateLeaseDTO {
-  tenant:              string;
-  landlord:            string;
-  property:            string;
-  propertyId?:         number;
-  propertyUnit?:       string;
-  propertyType?:       string;
-  propertyAddress?:    string;
-  startDate:           string;
-  endDate:             string;
-  leaseTerm?:          string;
-  monthlyRent:         number;
-  securityDeposit?:    number;
-  maintenanceCharge?:  number;
-  utilityCharge?:      number;
-  rentDueDay?:         number;
-  paymentMode?:        string;
-  increasePercentage?: number;
-  leaseValueAmount?:   number;
-  advanceAmount?:      number;
-  delayPenaltyAmount?: number;
-  petsAllowed?:        boolean;
-  terms?:              string;
-  notes?:              string;
-  autoRenewal?:        boolean;
-  userId:              number | string;
-  customerId:          number | string;
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+} from "typeorm";
+
+@Entity("lease_agreements")
+export class LeaseAgreement {
+  @PrimaryGeneratedColumn()
+  id!: number;
+
+  @Column({ unique: true })
+  leaseId!: string;
+
+  @Column()
+  status!: string;
+
+  @Column()
+  customerId!: string;
+
+  @Column()
+  customerName!: string;
+
+  @Column()
+  propertyId!: number;
+
+  @Column()
+  propertyUnit!: string;
+
+  @Column({ type: "text", nullable: true })
+  propertyAddress!: string;
+
+  @Column({ nullable: true })
+  leaseDuration!: string;
+
+  @Column({ type: "date" })
+  startDate!: Date;
+
+  @Column({ type: "date" })
+  endDate!: Date;
+
+  @Column("decimal", { precision: 12, scale: 2, nullable: true })
+  leaseValueAmount!: number;
+
+  @Column("decimal", { precision: 12, scale: 2, nullable: true })
+  advanceAmount!: number;
+
+  @Column("decimal", { precision: 12, scale: 2, nullable: true })
+  delayPenaltyAmount!: number;
+
+  @Column({ type: "date", nullable: true })
+  paymentDate!: Date;
+
+  @Column({ type: "date", nullable: true })
+  exceptionDate!: Date;
+
+  @Column({ default: false })
+  petsAllowed!: boolean;
+
+  @Column("simple-json", { nullable: true })
+  files!: string[];
+
+  @CreateDateColumn()
+  createdAt!: Date;
 }
 
-export interface UpdateLeaseDTO extends Partial<CreateLeaseDTO> {
-  status?: "Active" | "Expired" | "Terminated" | "Renewal Pending";
-  customerId?: number | string;
-  propertyId?: number;
-}
+

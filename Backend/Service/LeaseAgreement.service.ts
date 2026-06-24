@@ -35,9 +35,7 @@ export const saveFiles = (
   });
 };
 
-/* ──────────────────────────────────────
-   CREATE LEASE
-────────────────────────────────────── */
+
 export const createLease = async (
   data: CreateLeaseDTO,
   files: Express.Multer.File[] = []
